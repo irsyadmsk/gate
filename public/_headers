@@ -1,0 +1,12 @@
+# Header keamanan gate.irsyads.com (Worker Static Assets).
+# Kamera hanya untuk pemindaian QR setelah petugas menekan Buka kamera.
+/*
+  Strict-Transport-Security: max-age=31536000
+  Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'
+  Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()
+  X-Content-Type-Options: nosniff
+  X-Robots-Tag: noindex, nofollow
+  Referrer-Policy: no-referrer
+
+https://:project.workers.dev/*
+  X-Robots-Tag: noindex

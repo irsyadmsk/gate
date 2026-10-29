@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.astro/
+.wrangler/
+scratch/
+.env
+.env.*
+!.env.example
+*.log
+supabase/.temp/

@@ -1,0 +1,8 @@
+---
+import Dasar from "@/layouts/Dasar.astro";
+import GuestForm from "@/components/GuestForm";
+import NativeGuestRoot from '@/components/console/NativeGuestRoot';
+---
+<Dasar title="Pendaftaran tamu — Irsyads Gate" description="Daftarkan kunjungan Anda lalu tunjukkan kode kepada petugas gerbang.">
+  {import.meta.env.PUBLIC_GATE_CONSOLE !== '0' ? <NativeGuestRoot client:only="react" /> : <GuestForm client:only="react" />}
+</Dasar>

@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+
+  // Irsyads Gate. Worker berisi berkas statis saja .
+  "name": "gate",
+  "compatibility_date": "2026-09-10",
+
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+
+  // Catatan DNS gate.irsyads.com dibuat Cloudflare saat deploy pertama.
+  "routes": [
+    { "pattern": "gate.irsyads.com", "custom_domain": true }
+  ],
+
+  "observability": { "enabled": true }
+}

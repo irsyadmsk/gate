@@ -1,0 +1,30 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [
+    ".astro/types.d.ts",
+    "src/**/*",
+    "packages/**/*"
+  ],
+  "exclude": [
+    "dist"
+  ],
+  "compilerOptions": {
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@irsyads/gate-core": [
+        "./packages/gate/src/index.ts"
+      ],
+      "@irsyads/supabase/*": [
+        "./packages/supabase/src/*"
+      ]
+    },
+    "types": [
+      "astro/client",
+      "node"
+    ]
+  }
+}
