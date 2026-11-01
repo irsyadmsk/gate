@@ -8,11 +8,15 @@ var text = (value, length) => typeof value === "string" ? value.replace(/[\u0000
 var required = (value, label, length) => text(value, length) || fail("invalid", `${label} wajib diisi.`);
 function accountActor(state, actor) {
   if (actor.status && actor.status !== "active") fail("denied", "Akun tidak aktif. Hubungi admin.");
+  const access = state.guardAccess?.find((a) => a.accountId === actor.id);
+  if (access && !hasRole(actor, "admin")) actor = { ...actor, roles: [...actor.roles.filter((r) => r !== "guard"), ...access.enabled ? ["guard"] : []] };
   const link = state.gtkLinks?.find((l) => l.accountId === actor.id);
   const scope = state.approvers?.find((s) => s.accountId === actor.id);
   return { ...actor, roles: scope?.dorms.length ? [.../* @__PURE__ */ new Set([...actor.roles, "approver"])] : actor.roles, dorms: scope?.dorms ?? actor.dorms, personId: link ? link.personId || void 0 : actor.personId };
 }
 var accountDirectory = (state, directory) => directory.map((actor) => {
+  const access = state.guardAccess?.find((a) => a.accountId === actor.id);
+  if (access && !hasRole(actor, "admin")) actor = { ...actor, roles: [...actor.roles.filter((r) => r !== "guard"), ...access.enabled ? ["guard"] : []] };
   const link = state.gtkLinks?.find((l) => l.accountId === actor.id);
   const scope = state.approvers?.find((s) => s.accountId === actor.id);
   return { ...actor, roles: scope?.dorms.length ? [.../* @__PURE__ */ new Set([...actor.roles, "approver"])] : actor.roles, dorms: scope?.dorms ?? actor.dorms, personId: link ? link.personId || void 0 : actor.personId };
@@ -92,6 +96,40 @@ function applyGtkAccountCommand(state, actor, command, now, directory) {
   return application.personId || application.id;
 }
 
+// packages/gate/src/operations.ts
+function requireGateOperator(state, actor) {
+  const current = accountActor(state, actor);
+  if (!hasRole(current, "guard", "admin")) throw new GateRuleError("denied", "Hak satpam tidak aktif. Hubungi admin.");
+  return current;
+}
+function gatePresence(person, movements, now) {
+  if (person.kind !== "staff") return personPresence(person, movements, now);
+  const state = staffQuickState(person, movements, now), open = movements.find((m) => m.personId === person.id && m.kind === "temporary" && !m.returnedAt);
+  if (open) return personPresence(person, movements, now);
+  return { key: !state.next ? "unknown" : state.next === "out" ? "inside" : "outside", label: !state.next ? "Belum terverifikasi" : state.next === "out" ? "Terakhir tercatat di dalam" : "Terakhir tercatat di luar", lastAt: state.last?.at ?? null, movement: null };
+}
+function handoverSummary(s, from, now) {
+  return {
+    from,
+    until: now.toISOString(),
+    outside: s.people.filter((p) => p.active).flatMap((p) => {
+      const status = gatePresence(p, s.movements, now);
+      return ["outside", "late"].includes(status.key) ? [{ id: p.id, name: p.name, status: status.label, lastAt: status.lastAt }] : [];
+    }),
+    visits: s.visits.filter((v) => v.status === "inside").map(({ id, name, badge, purpose }) => ({ id, name, badge, purpose })),
+    entries: s.entries.filter((e) => e.status === "open").map(({ id, title, note, urgent }) => ({ id, title, note, urgent })),
+    activities: s.audit.filter((a) => a.at >= from && a.at <= now.toISOString()).map((a) => ({ at: a.at, action: a.action, actor: a.actorName, target: a.target, note: a.note }))
+  };
+}
+function printableCards(state, actor, ids) {
+  actor = accountActor(state, actor);
+  if (!hasRole(actor, "admin", "guard")) throw new GateRuleError("denied", "Hanya admin dan satpam aktif yang dapat mencetak kartu.");
+  if (!Array.isArray(ids) || !ids.length || ids.length > 1e3 || ids.some((id) => typeof id !== "string")) throw new GateRuleError("invalid", "Pilih satu sampai 1.000 kartu.");
+  const selected = [...new Set(ids)].map((id) => state.people.find((p) => p.id === id && p.active && p.token));
+  if (selected.some((p) => !p)) throw new GateRuleError("conflict", "Kartu berubah atau tidak aktif. Muat ulang daftar kartu.");
+  return selected;
+}
+
 // packages/gate/src/boarding.ts
 var GateRuleError = class extends Error {
   constructor(code, message) {
@@ -163,11 +201,14 @@ var VISIT_LABELS = { pending: "Menunggu konfirmasi penerima", accepted: "Penerim
 function boardingSnapshot(s, actor, directory, now) {
   if (!actor.id || !actor.roles.length) deny();
   actor = accountActor(s, actor);
+  if (!actor.roles.length) deny("Hak akses Gate telah dicabut. Hubungi admin.");
   const all = hasRole(actor, "admin", "guard");
   const people = s.people.filter((p) => all || hasRole(actor, "approver") && withinDorm(actor, p) || p.id === actor.personId);
   const ids = new Set(people.map((p) => p.id));
   const snapshot = structuredClone({ ...s, actor, directory: accountDirectory(s, directory).map(({ id, name, roles, personId, status }) => ({ id, name, roles, ...hasRole(actor, "admin") ? { personId, status } : {} })), serverAt: now.toISOString() });
   const { receipts: _receipts, ...out } = snapshot;
+  out.guardAccess = hasRole(actor, "admin") ? out.guardAccess ?? [] : [];
+  out.photos = all ? (out.photos ?? []).filter((p) => p.status === "ready" || p.uploadedBy === actor.id).map((p) => ({ ...p, fileId: "", digest: "" })) : [];
   out.gtkApplications = (out.gtkApplications ?? []).filter((r) => hasRole(actor, "admin") || r.accountId === actor.id);
   out.gtkLinks = (out.gtkLinks ?? []).filter((r) => hasRole(actor, "admin") || r.accountId === actor.id);
   out.approvers = (out.approvers ?? []).filter((r) => hasRole(actor, "admin") || r.accountId === actor.id);
@@ -189,11 +230,12 @@ function boardingSnapshot(s, actor, directory, now) {
       out.handovers = [];
       out.entries = [];
       out.audit = [];
-    } else if (!hasRole(actor, "admin")) out.audit = out.audit.filter((e) => e.actorId === actor.id);
+    }
   }
   return out;
 }
 function findCredential(s, actor, token) {
+  actor = accountActor(s, actor);
   operate(actor);
   const value = token.trim();
   const p = s.people.find((p2) => p2.active && p2.token === value);
@@ -205,6 +247,7 @@ function findCredential(s, actor, token) {
 function applyBoardingCommand(state, actor, command, now, directory = []) {
   if (!actor.id || !actor.roles.length) deny();
   actor = accountActor(state, actor);
+  if (!actor.roles.length) deny("Hak akses Gate telah dicabut. Hubungi admin.");
   directory = accountDirectory(state, directory);
   if (!command || typeof command.type !== "string" || !command.data || typeof command.data !== "object" || Array.isArray(command.data)) invalid("Tindakan tidak dapat dibaca.");
   if (!/^[a-zA-Z0-9_-]{8,80}$/.test(command.id)) invalid("Referensi tindakan tidak valid.");
@@ -218,6 +261,43 @@ function applyBoardingCommand(state, actor, command, now, directory = []) {
   let target = command.id, duplicate = false;
   const audit = (action, note = "") => s.audit.unshift({ id: `audit-${command.id}`, at, actorId: actor.id, actorName: actor.name, action, target, note });
   switch (command.type) {
+    case "guard.access": {
+      manage(actor);
+      const account = directory.find((a) => a.id === d.accountId && (!a.status || a.status === "active")) ?? invalid("Pilih akun staf aktif.");
+      if (hasRole(account, "admin") || account.id === actor.id) deny("Status administrator tidak dapat diubah dari pengelolaan satpam.");
+      if (!hasRole(account, "guard", "staff") && !s.guardAccess?.some((a) => a.accountId === account.id)) invalid("Pilih akun staf yang dapat ditugaskan sebagai satpam.");
+      if (typeof d.enabled !== "boolean") invalid("Pilih status satpam.");
+      const previous = s.guardAccess?.find((a) => a.accountId === account.id);
+      if (Number(d.version) !== (previous?.version ?? 0)) conflict("Status akun berubah. Muat ulang sebelum mengonfirmasi.");
+      const reason = required2(d.reason, "Alasan perubahan", 300);
+      s.guardAccess = [...(s.guardAccess ?? []).filter((a) => a.accountId !== account.id), { accountId: account.id, enabled: d.enabled === true, version: (previous?.version ?? 0) + 1, by: actor.id, at, reason }];
+      target = account.id;
+      audit(d.enabled ? "Hak satpam diberikan" : "Hak satpam dicabut", reason);
+      break;
+    }
+    case "cards.print": {
+      const cards = printableCards(s, actor, d.ids);
+      audit("Kartu disiapkan untuk cetak", cards.map((p) => p.number).join(", ").slice(0, 500));
+      break;
+    }
+    case "report.export": {
+      operate(actor);
+      const kinds = ["movements", "permits", "visits", "duty", "handover", "shifts", "incidents", "audit", "activity"];
+      if (!kinds.includes(String(d.kind)) || !["csv", "xlsx", "docx", "print"].includes(String(d.format))) invalid("Jenis ekspor tidak valid.");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(d.from)) || !/^\d{4}-\d{2}-\d{2}$/.test(String(d.until)) || String(d.from) > String(d.until)) invalid("Tanggal ekspor tidak valid.");
+      audit("Riwayat disiapkan untuk ekspor", String(d.kind) + " \xB7 " + String(d.from) + " \u2014 " + String(d.until) + " \xB7 " + String(d.format));
+      break;
+    }
+    case "duty.checkin": {
+      operate(actor);
+      const gate = required2(d.gate, "Pos", 60);
+      if (s.handovers.some((h) => h.toId === actor.id && !h.receivedAt)) conflict("Terima serah terima yang menunggu sebelum memulai jaga baru.");
+      if (!s.settings.gates.includes(gate)) invalid("Pos tidak dikenal.");
+      if (s.duties.some((duty) => duty.status === "active" && duty.officers.includes(actor.id))) conflict("Anda masih memiliki jaga aktif. Serahterimakan dahulu.");
+      s.duties.unshift({ id: command.id, label: "Jaga " + actor.name, gate, from: at, until: new Date(now.getTime() + 8 * 36e5).toISOString(), officers: [actor.id], status: "active", startedAt: at, endedAt: null });
+      audit("Petugas mulai jaga mandiri");
+      break;
+    }
     case "authority.save": {
       manage(actor);
       const account = directory.find((a) => a.id === d.accountId && hasRole(a, "staff") && (!a.status || a.status === "active")) ?? invalid("Pilih akun GTK aktif.");
@@ -489,7 +569,7 @@ function applyBoardingCommand(state, actor, command, now, directory = []) {
       const recipient = directory.find((a) => a.id === d.toId && hasRole(a, "guard") && a.id !== actor.id) ?? invalid("Pilih petugas penerima yang berbeda.");
       const checks = Array.isArray(d.checks) ? d.checks.filter((x) => typeof x === "string") : [];
       if (!HANDOVER_CHECKS.every((x) => checks.includes(x))) invalid("Lengkapi seluruh pemeriksaan serah terima.");
-      s.handovers.unshift({ id: command.id, dutyId: duty.id, fromId: actor.id, fromName: actor.name, toId: recipient.id, toName: recipient.name, note: required2(d.note, "Catatan serah terima", 500), checks: [...HANDOVER_CHECKS], createdAt: at, receivedAt: null, openMovements: s.movements.filter((m) => m.kind === "temporary" && !m.returnedAt).map((m) => m.id), openVisits: s.visits.filter((v) => v.status === "inside").map((v) => v.id), openEntries: s.entries.filter((e) => e.status === "open").map((e) => e.id) });
+      s.handovers.unshift({ id: command.id, dutyId: duty.id, fromId: actor.id, fromName: actor.name, toId: recipient.id, toName: recipient.name, note: required2(d.note, "Catatan serah terima", 500), checks: [...HANDOVER_CHECKS], createdAt: at, receivedAt: null, openMovements: s.movements.filter((m) => m.kind === "temporary" && !m.returnedAt).map((m) => m.id), openVisits: s.visits.filter((v) => v.status === "inside").map((v) => v.id), openEntries: s.entries.filter((e) => e.status === "open").map((e) => e.id), summary: handoverSummary(s, duty.startedAt ?? duty.from, now) });
       audit("Serah terima diajukan");
       break;
     }
@@ -499,10 +579,18 @@ function applyBoardingCommand(state, actor, command, now, directory = []) {
       if (h.toId !== actor.id) deny("Hanya petugas penerima yang ditunjuk dapat menerima.");
       if (h.receivedAt) conflict("Serah terima sudah diterima.");
       if (d.checked !== true) invalid("Periksa tanggungan sebelum menerima.");
+      if (s.duties.some((x) => x.status === "active" && x.officers.includes(actor.id) && x.gate !== s.duties.find((duty2) => duty2.id === h.dutyId)?.gate)) conflict("Selesaikan jaga aktif di pos lain sebelum menerima.");
       h.receivedAt = at;
       const duty = s.duties.find((x) => x.id === h.dutyId);
       duty.status = "closed";
       duty.endedAt = at;
+      if (!s.duties.some((x) => x.status === "active" && x.officers.includes(actor.id))) {
+        const next = s.duties.find((x) => x.status === "scheduled" && x.gate === duty.gate && x.officers.includes(actor.id));
+        if (next) {
+          next.status = "active";
+          next.startedAt = at;
+        } else s.duties.unshift({ id: "next-" + h.id, label: "Jaga " + actor.name, gate: duty.gate, from: at, until: new Date(now.getTime() + 8 * 36e5).toISOString(), officers: [actor.id], status: "active", startedAt: at, endedAt: null });
+      }
       target = h.id;
       audit("Serah terima diterima; tanggungan tetap terbuka");
       break;
@@ -599,12 +687,16 @@ export {
   canExitStudent,
   expireBoardingGuests,
   findCredential,
+  gatePresence,
   guestReceipt,
+  handoverSummary,
   hasRole,
   latestStaffEvent,
   openMovement,
   personPresence,
+  printableCards,
   registerBoardingGuest,
+  requireGateOperator,
   staffQuickState,
   wibDay
 };

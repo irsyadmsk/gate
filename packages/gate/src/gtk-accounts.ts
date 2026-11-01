@@ -5,11 +5,15 @@ const text = (value: unknown, length: number) => typeof value === "string" ? val
 const required = (value: unknown, label: string, length: number) => text(value, length) || fail("invalid", `${label} wajib diisi.`);
 export function accountActor(state: GateBoardingState, actor: GateActor): GateActor {
   if (actor.status && actor.status !== "active") fail("denied", "Akun tidak aktif. Hubungi admin.");
+  const access = state.guardAccess?.find(a => a.accountId === actor.id);
+  if (access && !hasRole(actor,'admin')) actor = { ...actor, roles: [...actor.roles.filter(r => r !== 'guard'), ...(access.enabled ? ['guard' as const] : [])] };
   const link = state.gtkLinks?.find((l) => l.accountId === actor.id);
   const scope = state.approvers?.find((s) => s.accountId === actor.id);
   return { ...actor, roles: scope?.dorms.length ? [...new Set([...actor.roles, "approver" as const])] : actor.roles, dorms: scope?.dorms ?? actor.dorms, personId: link ? link.personId || undefined : actor.personId };
 }
 export const accountDirectory = (state: GateBoardingState, directory: GateActor[]) => directory.map((actor) => {
+  const access = state.guardAccess?.find(a => a.accountId === actor.id);
+  if (access && !hasRole(actor,'admin')) actor = { ...actor, roles: [...actor.roles.filter(r => r !== 'guard'), ...(access.enabled ? ['guard' as const] : [])] };
   const link = state.gtkLinks?.find((l) => l.accountId === actor.id);
   const scope = state.approvers?.find((s) => s.accountId === actor.id);
   return { ...actor, roles: scope?.dorms.length ? [...new Set([...actor.roles, "approver" as const])] : actor.roles, dorms: scope?.dorms ?? actor.dorms, personId: link ? link.personId || undefined : actor.personId };

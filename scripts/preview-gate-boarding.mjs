@@ -13,11 +13,13 @@ await mkdir(output, { recursive: true });
 await Promise.all([
   build({ entryPoints: [path.join(root, "tests/fixtures/gate-boarding-browser.tsx")], bundle: true, format: "esm", outfile: path.join(output, "app.js"), jsx: "automatic", platform: "browser", define: { "process.env.NODE_ENV": '"development"', "import.meta.env.PUBLIC_GATE_REMOTE": '"0"', "import.meta.env.PUBLIC_GATE_CONSOLE": '"0"' }, alias: { "@irsyads/gate-core": path.join(root, "packages/gate/src/index.ts"), "@irsyads/design-tokens": path.join(root, "packages/design-tokens/src") }, plugins: [{ name: "no-native-studio-transport", setup(b) { b.onResolve({ filter: /^\.\/gate-remote$/ }, () => ({ path: "gate-remote", namespace: "local-only" })); b.onLoad({ filter: /.*/, namespace: "local-only" }, () => ({ contents: "export const studioGateRemote = null;", loader: "js" })); } }] }),
   build({ entryPoints: [path.join(root, "packages/gate/src/boarding.ts")], bundle: true, format: "esm", outfile: path.join(output, "engine.mjs"), platform: "node" }),
+  build({entryPoints:[path.join(root,'supabase/functions/_shared/gate-console-handler.ts')],bundle:true,format:'esm',outfile:path.join(output,'operations.mjs'),platform:'node'}),
   copyFile(path.join(root, "src/styles/console.css"), path.join(output, "console.css")),
   copyFile(path.join(root, "public/gate-font.woff2"), path.join(output, "gate-font.woff2")),
 ]);
 if (process.argv.includes("--build-only")) { process.stdout.write(`Aset pratinjau Gate diperbarui: ${output}\n`); process.exit(0); }
 const { boardingSnapshot, applyBoardingCommand, findCredential, registerBoardingGuest, guestReceipt, expireBoardingGuests, GateRuleError } = await import(pathToFileURL(path.join(output, "engine.mjs")).href);
+const {nativeGateHandler}=await import(pathToFileURL(path.join(output,'operations.mjs')).href);
 const statePath = path.join(output, process.env.GATE_PREVIEW_STATE || "state.json");
 let state;
 try { state = JSON.parse(await readFile(statePath, "utf8")); if (state.schema !== 1) throw new Error("Versi state tidak didukung; berkas dipertahankan."); }
@@ -28,6 +30,12 @@ const save = async (next) => { const temporary = `${statePath}.${randomUUID()}.t
 const transact = (fn) => { const work = queue.then(fn); queue = work.catch(() => {}); return work; };
 const expire = async () => { const next = expireBoardingGuests(state, new Date()); if (next !== state) await save(next); };
 setInterval(() => { void transact(expire).catch(() => {}); }, 60_000).unref();
+const photoDir=path.join(output,'photos');await mkdir(photoDir,{recursive:true});
+const photoProvider={name:'Penyimpanan lokal sintetis',ready:true,newId:async()=>randomUUID(),
+ upload:async(id,bytes)=>{if(!/^[a-zA-Z0-9-]+$/.test(id))throw Error('Invalid photo');const file=path.join(photoDir,id+'.jpg');try{await writeFile(file,bytes,{flag:'wx'});}catch(e){if(e.code!=='EEXIST')throw e;if(!(await readFile(file)).equals(Buffer.from(bytes)))throw Error('Photo conflict');}},
+ read:async(id)=>{if(!/^[a-zA-Z0-9-]+$/.test(id))throw Error('Invalid photo');return new Uint8Array(await readFile(path.join(photoDir,id+'.jpg')));}
+};
+const operations=nativeGateHandler({read:async()=>structuredClone(state),directory:async()=>ACTORS,identity:async(auth)=>{const actor=ACTORS.find(a=>a.id===auth.slice(7));if(!actor)throw {status:401};return actor;},rate:async()=>true,commit:async(expected,next)=>transact(async()=>{if(state.revision!==expected)return false;await save(next);return true;})},false,photoProvider);
 const hash = (s) => createHash("sha256").update(s).digest();
 const same = (a, b) => timingSafeEqual(hash(a), hash(b));
 const port = Number(process.env.GATE_PREVIEW_PORT || 4571);
@@ -48,7 +56,7 @@ const server = http.createServer(async (req, res) => {
     let body = {};
     if (req.method === "POST") {
       if (!String(req.headers["content-type"]).startsWith("application/json")) return json(415, { error: "Gunakan JSON." });
-      let raw = ""; for await (const chunk of req) { raw += chunk; if (Buffer.byteLength(raw) > 48_000) { json(413, { error: "Isian terlalu besar." }); return; } }
+      let raw = ""; for await (const chunk of req) { raw += chunk; if (Buffer.byteLength(raw) > (pathname === "/api/operations" ? 2_100_000 : 48_000)) { json(413, { error: "Isian terlalu besar." }); return; } }
       try { body = JSON.parse(raw); if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error(); } catch { return json(400, { error: "Isian tidak dapat dibaca." }); }
     }
     const token = (req.headers.cookie ?? "").split(";").map((s) => s.trim()).find((s) => s.startsWith("gate_preview="))?.slice(13);
@@ -88,6 +96,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname.startsWith("/api/")) {
       if (!actor) return json(401, { error: "Sesi uji berakhir. Masuk kembali." });
+      if (pathname === '/api/operations' && req.method === 'POST') {
+        const result=await operations(new Request('https://gate.irsyads.com/functions/v1/gate-console',{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://gate.irsyads.com',Authorization:'Bearer '+actor.id},body:JSON.stringify(body)}));
+        res.writeHead(result.status,{'Content-Type':'application/json','Cache-Control':'no-store'});return res.end(await result.text());
+      }
       if (pathname === "/api/snapshot" && req.method === "GET") return json(200, boardingSnapshot(state, actor, ACTORS, new Date()));
       if (pathname === "/api/lookup" && req.method === "POST") return json(200, findCredential(state, actor, String(body.token)));
       if (pathname === "/api/command" && req.method === "POST") return json(200, await transact(async () => {

@@ -8,8 +8,20 @@ import GtkFastLane from "./GtkFastLane";
 import GtkAccount from "./GtkAccount";
 import { Empty, Icon, Tag, Check, Field, dateWib, fullWib, timeWib, initials, newReference } from "./ui";
 
-type Page = "home" | "card" | "overview" | "scan" | "people" | "staff" | "permits" | "visits" | "duty" | "reports" | "more";
+import GateDesk from './GateDesk';
+import GatePresence from './GatePresence';
+import GuardManager from './GuardManager';
+import GateCards from './GateCards';
+import GateReports from './GateReports';
+import GateIncidents from './GateIncidents';
+import HandoverInbox from './HandoverInbox';
+import AdminDirectory from './AdminDirectory';
+import '../../styles/workspaces.css';
+type Page = "desk" | "presence" | "cards" | "administration" | "officers" | "incidents" | "handover" | "home" | "card" | "overview" | "scan" | "people" | "staff" | "permits" | "visits" | "duty" | "reports" | "more";
 const allNav: { id: Page; label: string; icon: string }[] = [
+  {id:'desk',label:'Ruang kerja Gate',icon:'home'}, {id:'presence',label:'Siapa di area?',icon:'people'},
+  {id:'cards',label:'Cetak kartu',icon:'printer'}, {id:'incidents',label:'Kejadian & kebutuhan',icon:'permit'},
+  {id:'handover',label:'Kiriman jaga',icon:'shield'}, {id:'administration',label:'GTK & akun',icon:'people'}, {id:'officers',label:'Status satpam',icon:'shield'},
   { id: "home", label: "GTK cepat", icon: "home" }, { id: "scan", label: "Pindai kartu", icon: "scan" },
   { id: "card", label: "Kartu saya", icon: "people" },
   { id: "overview", label: "Ringkasan pos", icon: "permit" },
@@ -22,15 +34,16 @@ const csv = (text: string) => `"${(/^[=+\-@\t\r]/.test(text) ? "'" : "") + text.
 const download = (filename: string, mime: string, data: string | Uint8Array) => { const url = URL.createObjectURL(new Blob([data as BlobPart], { type: mime })); const a = document.createElement("a"); a.href = url; a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(url), 30000); };
 export default function GateConsole({ service, local = false, signedOut }: { service: ConsoleService; local?: boolean; signedOut: () => void }) {
   const [snapshot, setSnapshot] = useState<BoardingSnapshot | null>(null), [error, setError] = useState("");
-  const [page, setPage] = useState<Page>("home"), [dialog, setDialog] = useState<ConsoleDialog | null>(null), [busy, setBusy] = useState(false);
+  const [page, setPage] = useState<Page>("desk"), [dialog, setDialog] = useState<ConsoleDialog | null>(null), [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null), [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all"), [large, setLarge] = useState(false), [contrast, setContrast] = useState(false);
+  const [printIds,setPrintIds]=useState<string[]>([]);
   const [fastBusy, setFastBusy] = useState(false);
   const [reportKind, setReportKind] = useState<BoardingReportKind>("movements"), [from, setFrom] = useState(wibDay(new Date())), [until, setUntil] = useState(wibDay(new Date()));
   const lock = useRef(false), refreshId = useRef(0), pending = useRef<BoardingCommand | null>(null), alive = useRef(true);
   const refresh = useCallback(async () => {
     const id = ++refreshId.current;
-    try { const s = await service.snapshot(page === "reports" ? { from, until } : undefined); if (alive.current && id === refreshId.current) { setSnapshot(s); setError(""); } return true; }
+    try { const s = await service.snapshot(); if (alive.current && id === refreshId.current) { setSnapshot(s); setError(""); } return true; }
     catch (e) { if (alive.current && id === refreshId.current) { if ([401, 403].includes((e as Error & { status?: number }).status ?? 0)) setSnapshot(null); setError((e as Error).message || "Koneksi terputus. Data terakhir belum diperbarui."); } return false; }
   }, [service, page, from, until]);
   useEffect(() => { alive.current = true; void refresh(); return () => { alive.current = false; ++refreshId.current; }; }, [refresh]);
@@ -57,12 +70,12 @@ export default function GateConsole({ service, local = false, signedOut }: { ser
     finally { lock.current = false; setBusy(false); }
   };
   const report = useMemo(() => { if (!snapshot) return null; try { return boardingReport(snapshot, reportKind, from, until); } catch { return null; } }, [snapshot, reportKind, from, until]);
-  if (!snapshot) return <div className="gc"><main className="gc-public"><div className="gc-brand"><span className="gc-brandmark"><Icon name="shield" /></span><strong>Gate</strong></div><div className="gc-empty"><h2>{error ? "Pos belum dapat dimuat" : "Menyiapkan pos…"}</h2><p role={error ? "alert" : "status"}>{error || "Memeriksa akun dan tanggungan jaga."}</p></div>{error && <div className="gc-actions"><button type="button" onClick={() => void refresh()}>Coba lagi</button><button type="button" onClick={logout}>Keluar dari akun uji</button></div>}</main></div>;
+  if (!snapshot) return <div className="gc"><main className="gc-public"><div className="gc-brand"><span className="gc-brandmark"><Icon name="shield" /></span><strong>Gate</strong></div><div className="gc-empty"><h2>{error ? "Pos belum dapat dimuat" : "Menyiapkan pos…"}</h2><p role={error ? "alert" : "status"}>{error || "Memeriksa akun dan tanggungan jaga."}</p></div>{error && <div className="gc-actions"><button type="button" onClick={() => void refresh()}>Coba lagi</button><button type="button" onClick={logout}>Keluar dari akun</button></div>}</main></div>;
   const s = snapshot, now = new Date(s.serverAt), admin = hasRole(s.actor, "admin"), guard = hasRole(s.actor, "guard", "admin"), approver = hasRole(s.actor, "approver"), self = hasRole(s.actor, "staff") && !guard && !approver;
-  const nav = allNav.filter((n) => n.id === "home" || n.id === "more" || n.id === "reports" || (n.id === "card" && hasRole(s.actor, "staff") && !self) || (n.id === "staff" && guard) || (guard && ["overview", "scan", "people", "permits", "visits", "duty"].includes(n.id)) || (approver && ["people", "permits", "visits"].includes(n.id))).map((n) => n.id === "home" && !guard ? { ...n, label: self ? "Kartu saya" : "Ringkasan pos" } : n);
+  const nav = allNav.filter((n) => (admin && ['administration','officers'].includes(n.id)) || (guard && ['desk','presence','cards','incidents','handover'].includes(n.id)) || n.id === "home" || n.id === "more" || n.id === "reports" || (n.id === "card" && hasRole(s.actor, "staff") && !self) || (n.id === "staff" && guard) || (guard && ["overview", "scan", "people", "permits", "visits", "duty"].includes(n.id)) || (approver && ["people", "permits", "visits"].includes(n.id))).map((n) => n.id === "home" && !guard ? { ...n, label: self ? "Kartu saya" : "Ringkasan pos" } : n);
   const current = nav.some((n) => n.id === page) ? page : "home";
-  const mobileIds: Page[] = guard ? ["home", "scan", "permits", "duty", "more"] : approver ? ["home", "permits", "visits", "people", "more"] : ["home", "reports", "more"];
-  const mobileLabel: Partial<Record<Page, string>> = { home: guard ? "GTK" : self ? "Kartu saya" : "Pos", scan: "Pindai", permits: "Izin", duty: "Jaga", more: "Lainnya", people: "Murid", visits: "Tamu", staff: "Kartu saya", reports: "Riwayat" };
+  const mobileIds: Page[] = admin ? ['desk','cards','duty','reports','more'] : guard ? ['desk','scan','presence','duty','more'] : approver ? ["home", "permits", "visits", "people", "more"] : ["home", "reports", "more"];
+  const mobileLabel: Partial<Record<Page, string>> = { desk:"Pos",presence:"Orang",cards:"Kartu", home: guard ? "GTK" : self ? "Kartu saya" : "Pos", scan: "Pindai", permits: "Izin", duty: "Jaga", more: "Lainnya", people: "Murid", visits: "Tamu", staff: "Kartu saya", reports: "Riwayat" };
   const nameOf = (id: string) => s.people.find((p) => p.id === id)?.name ?? "Identitas tidak tersedia";
   const accountName = (id: string) => s.directory.find((p) => p.id === id)?.name ?? "Petugas";
   const pendingPermits = s.permits.filter((p) => p.status === "pending"), openMoves = s.movements.filter((m) => m.kind === "temporary" && !m.returnedAt), late = openMoves.filter((m) => Date.parse(m.due) < now.getTime());
@@ -76,7 +89,21 @@ export default function GateConsole({ service, local = false, signedOut }: { ser
   const match = (value: string) => value.toLowerCase().includes(query.toLowerCase().trim());
   let content: React.ReactNode;
 
-  if ((self && ["home", "staff"].includes(current)) || current === "card" && hasRole(s.actor, "staff")) {
+  if (guard && current === 'desk') {
+    content = <GateDesk snapshot={s} go={go} entry={()=>open({type:'entry'})} execute={execute} busy={busy}/>;
+  } else if (guard && current === 'presence') {
+    content = <GatePresence snapshot={s} inspect={id=>open({type:'person',id})}/>;
+  } else if (guard && current === 'cards') {
+    content = <GateCards snapshot={s} service={service} initialIds={printIds}/>;
+  } else if (admin && current === 'administration') {
+    content = <AdminDirectory service={service} printCards={ids=>{setPrintIds(ids);go("cards");}}/>;
+  } else if (admin && current === 'officers') {
+    content = <GuardManager snapshot={s} execute={execute} busy={busy}/>;
+  } else if (guard && current === 'incidents') {
+    content = <GateIncidents snapshot={s} service={service} refresh={refresh} entry={()=>open({type:'entry'})} resolve={id=>open({type:'resolve',id})}/>;
+  } else if (guard && current === 'handover') {
+    content = <HandoverInbox snapshot={s} execute={execute} busy={busy}/>;
+  } else if ((self && ["home", "staff"].includes(current)) || current === "card" && hasRole(s.actor, "staff")) {
     content = <GtkAccount snapshot={s} busy={busy} execute={execute} />;
   } else if (guard && ["home", "staff", "scan"].includes(current)) {
     content = <GtkFastLane service={service} snapshot={s} updated={acceptSnapshot} otherCode={lookup} busyChanged={setFastBusy} suspended={!!dialog} edit={admin ? (id) => open({ type: "person-edit", id }) : undefined} card={admin ? (id) => open({ type: "card", id }) : undefined} add={admin ? () => open({ type: "person-edit", extra: "staff" }) : undefined} />;
@@ -119,13 +146,7 @@ export default function GateConsole({ service, local = false, signedOut }: { ser
       {(filter === "all" || filter === "entries") && <section className="gc-section"><div className="gc-section-head"><div><h2>Buku jaga & tindak lanjut</h2><p>{openEntries.length} catatan belum selesai</p></div></div><div className="gc-section-body gc-actions">{(["patrol", "package", "asset", "incident"] as const).map((kind) => <button type="button" key={kind} className="gc-small" onClick={() => open({ type: "entry", extra: kind })}>{ENTRY_LABELS[kind]}<Icon name="plus" size={16} /></button>)}</div>{s.entries.length ? <ul className="gc-rows">{s.entries.map((e) => <li className="gc-row" key={e.id}><span className={`gc-row-icon ${e.urgent ? "gc-warning" : ""}`}><Icon name={e.kind === "asset" ? "key" : e.kind === "package" ? "car" : "permit"} size={19} /></span><div className="gc-row-body"><strong>{e.title}</strong><p>{e.note}</p><p>{ENTRY_LABELS[e.kind]} · {e.actorName} · {fullWib(e.createdAt)}</p>{e.resolution && <p>Tindak lanjut: {e.resolution}</p>}<Tag tone={e.status === "done" ? "green" : e.urgent ? "red" : "amber"}>{e.status === "done" ? "Selesai" : e.urgent ? "Perhatian segera" : "Masih terbuka"}</Tag></div><div className="gc-actions">{e.status === "open" && <button type="button" onClick={() => open({ type: "resolve", id: e.id })}>Tindak lanjut</button>}{admin && <button type="button" aria-label={`Koreksi ${e.title}`} onClick={() => open({ type: "correct", id: e.id })}><Icon name="settings" size={17} /></button>}</div></li>)}</ul> : <Empty title="Belum ada catatan jaga">Catat kondisi, patroli, titipan, atau kejadian dari HP.</Empty>}</section>}
     </>;
   } else if (current === "reports") {
-    const exportReport = (kind: "csv" | "xlsx" | "docx") => {
-      if (!report) return; const filename = `gate-${reportKind}-${from}-${until}`;
-      if (kind === "csv") download(`${filename}.csv`, "text/csv;charset=utf-8", "\ufeff" + [report.headers, ...report.rows].map((row) => row.map(csv).join(",")).join("\r\n"));
-      if (kind === "xlsx") download(`${filename}.xlsx`, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", boardingXlsx(report));
-      if (kind === "docx") download(`${filename}.docx`, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", boardingDocx(report, s.settings.siteName, `${from} s.d. ${until}`));
-    };
-    content = <>{header("Riwayat & laporan.", "Pilih jenis dan tanggal. Ekspor mengikuti data yang terlihat pada akun ini.")}<section className="gc-section"><div className="gc-report-filter"><Field label="Jenis laporan"><select value={reportKind} onChange={(e) => setReportKind(e.target.value as BoardingReportKind)}><option value="movements">Pergerakan murid / GTK</option><option value="permits">Izin murid</option><option value="visits">Kunjungan tamu</option><option value="duty">Buku jaga</option>{admin && <option value="audit">Jejak audit</option>}</select></Field><Field label="Dari tanggal · WIB"><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field><Field label="Sampai tanggal · WIB"><input type="date" value={until} onChange={(e) => setUntil(e.target.value)} /></Field></div><div className="gc-section-head"><div><h2>{report?.title ?? "Periksa tanggal laporan"}</h2><p>{report ? `${report.rows.length} catatan · ${from} s.d. ${until}` : "Tanggal mulai harus sebelum atau sama dengan tanggal akhir."}</p></div><div className="gc-actions gc-no-print"><button type="button" disabled={!report?.rows.length} onClick={() => exportReport("csv")} className="gc-small">CSV</button><button type="button" disabled={!report?.rows.length} onClick={() => exportReport("xlsx")} className="gc-small">Excel</button><button type="button" disabled={!report?.rows.length} onClick={() => exportReport("docx")} className="gc-small">Word</button><button type="button" disabled={!report} onClick={() => window.print()} className="gc-small"><Icon name="printer" size={16} />Cetak</button></div></div><div className="gc-print-only"><h2>{s.settings.siteName}</h2><p>{report?.title} · {from} s.d. {until} · {report?.rows.length} catatan</p>{local && <p>DATA CONTOH — UJI LOKAL</p>}</div>{report?.rows.length ? <div className="gc-table-scroll"><table className="gc-table"><thead><tr>{report.headers.map((h) => <th scope="col" key={h}>{h}</th>)}</tr></thead><tbody>{report.rows.map((row, i) => <tr key={i}>{row.map((cell, j) => <td key={j}>{j === 0 ? <strong>{cell}</strong> : cell}</td>)}</tr>)}</tbody></table></div> : <Empty title="Tidak ada catatan pada rentang ini">Pilih tanggal atau jenis laporan lain.</Empty>}</section></>;
+    content = <GateReports service={service}/>;
   } else {
     content = <>{header("Ruang kerja Anda.", "Direktori, layanan tamu, pengaturan, dan kenyamanan tampilan.")}<div className="gc-more-grid">{nav.filter((n) => !["home", "more", "scan", "duty"].includes(n.id)).map((n) => <button key={n.id} type="button" onClick={() => go(n.id)}><Icon name={n.icon} size={26} /><strong>{n.label}</strong><span>Buka {n.label.toLowerCase()}</span></button>)}{admin && <button type="button" onClick={() => open({ type: "settings" })}><Icon name="settings" size={26} /><strong>Pengaturan Gate</strong><span>Nama lembaga dan kebijakan kunjungan</span></button>}<a href="/tamu" target="_blank" rel="noopener noreferrer" className="gc-button"><Icon name="people" /><strong>Halaman tamu</strong></a></div><section className="gc-section" style={{ marginTop: 22 }}><div className="gc-section-head"><h2>Kenyamanan tampilan</h2></div><div className="gc-section-body"><Check label="Gunakan ukuran huruf lebih besar" checked={large} onChange={(v) => { setLarge(v); try { localStorage.setItem("gate-console-comfort-v1", JSON.stringify({ large: v, contrast })); } catch {} }} /><Check label="Kontras lebih tinggi" checked={contrast} onChange={(v) => { setContrast(v); try { localStorage.setItem("gate-console-comfort-v1", JSON.stringify({ large, contrast: v })); } catch {} }} /><div className="gc-line" /><div className="gc-flex gc-spread"><div><strong>{s.actor.name}</strong><p className="gc-muted">{roleLabel}</p></div><button type="button" onClick={logout}><Icon name="logout" size={18} />Keluar akun</button></div></div></section></>;
   }
@@ -136,9 +157,9 @@ export default function GateConsole({ service, local = false, signedOut }: { ser
     <main className="gc-main" id="gate-main"><div className="gc-topline"><span className="gc-breadcrumb">Gate<Icon name="chevron" size={13} />{nav.find((n) => n.id === current)?.label}</span><div className="gc-flex"><span className={`gc-connection ${error ? "gc-offline" : ""}`}>{error ? "Koneksi belum pulih" : `Diperbarui ${timeWib(s.serverAt)} WIB`}</span><button type="button" className="gc-icon-button" aria-label="Muat ulang data" onClick={() => void refresh()}><Icon name="refresh" size={17} /></button></div></div>
       {error && <div className="gc-callout gc-error" role="alert" style={{ marginBottom: 18 }}><Icon name="info" /><p>{error} Data terakhir tidak membuktikan izin masih berlaku. Periksa ulang dengan pengasuh sebelum pencatatan.</p></div>}
       {notice && !dialog && <div role={notice.error ? "alert" : "status"} className={`gc-notice ${notice.error ? "gc-notice-error" : ""}`}><span>{notice.text}</span><button type="button" onClick={() => setNotice(null)} aria-label="Tutup pemberitahuan"><Icon name="close" size={16} /></button></div>}
-      {content}<footer className="gc-footer"><span>Irsyads Gate · {local ? "Data contoh tersimpan di server lokal" : "Layanan gerbang"}</span><span>Asia/Jakarta · WIB</span></footer>
+      {guard && !['desk','handover'].includes(current) && s.handovers.some(h=>h.toId===s.actor.id&&!h.receivedAt) && <div className="gc-callout gw-space"><Icon name="shield"/><p>Serah terima menunggu Anda.</p><button type="button" onClick={()=>go('handover')}>Tinjau kiriman jaga</button></div>}{content}<footer className="gc-footer"><span>Irsyads Gate · {local ? "Data contoh tersimpan di server lokal" : "Layanan gerbang"}</span><span>Asia/Jakarta · WIB</span></footer>
     </main>
     <nav className="gc-bottomnav" style={{ gridTemplateColumns: `repeat(${mobileIds.length},minmax(0,1fr))` }} aria-label="Navigasi HP">{mobileIds.map((id) => { const n = allNav.find((n) => n.id === id)!; return <button key={id} type="button" aria-current={current === id || id === "more" && !mobileIds.includes(current) ? "page" : undefined} onClick={() => go(id)}><Icon name={n.icon} size={21} /><span>{mobileLabel[id]}</span>{count(id) > 0 && <span className="gc-nav-count">{count(id)}</span>}</button>; })}</nav>
-    {dialog && <ConsoleDialogs key={`${dialog.type}:${dialog.id ?? "new"}`} dialog={dialog} snapshot={s} execute={execute} busy={busy} error={notice?.error ? notice.text : ""} close={() => setDialog(null)} />}
+    {dialog && <ConsoleDialogs key={`${dialog.type}:${dialog.id ?? "new"}`} dialog={dialog} snapshot={s} execute={execute} busy={busy} error={notice?.error ? notice.text : ""} printCards={ids=>{setDialog(null);setPrintIds(ids);go("cards");}} close={() => setDialog(null)} />}
   </div>;
 }

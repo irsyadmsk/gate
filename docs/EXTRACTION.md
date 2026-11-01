@@ -1,5 +1,7 @@
 # Pemisahan Gate — 29 Oktober 2026
 
+Catatan lanjutan: kandidat ruang admin/satpam langsung di Gate tersedia pada `docs/2026-10-29_WORKSPACES_LOCAL.md`. Pembagian Studio di bawah mencatat keadaan saat ekstraksi; kandidat ruang baru belum dirilis.
+
 Gate menjadi repositori tersendiri di `irsyadmsk/gate`, dengan aplikasi Astro di root (`src/`, `public/`, `astro.config.mjs`, `wrangler.jsonc`). Pemisahan mengambil snapshot sumber Gate dari working tree Irsyads, tanpa membawa sejarah Git atau aplikasi lain.
 
 ## Kepemilikan

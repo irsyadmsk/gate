@@ -16,6 +16,7 @@ before(async()=>{
  insert into user_accounts values('${admin}','staf','active',false,'admin@contoh.test'),('${staff}','staf','active',false,'staf@contoh.test'),('${student}','sekolah','active',false,'murid@contoh.test');
  insert into auth.sessions values('${session}','${staff}'); grant select on user_accounts,profiles,user_roles,role_permissions to service_role;`);
  await db.exec(await readFile('supabase/migrations/20261027044347_gate_console_native.sql','utf8'));
+ await db.exec(await readFile('supabase/migrations/20261029042446_gate_report_return_history.sql','utf8'));
 });
 after(()=>db?.close());
 test('native SQL: seluruh tabel tersembunyi dari anon/authenticated; hanya identity yang dapat dipanggil user',async()=>{
@@ -45,4 +46,13 @@ test('native SQL: rate limit persisten dan raw state ditolak untuk authenticated
  assert.equal((await db.query("select gate_console_rate('test-client',1,60) ok")).rows[0].ok,true);
  assert.equal((await db.query("select gate_console_rate('test-client',1,60) ok")).rows[0].ok,false);
  await db.exec('set role authenticated'); await assert.rejects(db.query('select gate_console_core()'),/permission denied/); await db.exec('reset role');
+});
+
+test('native SQL: return within a report range remains visible after a later arrival',async()=>{
+ const state=(await db.query('select gate_console_core() as s')).rows[0].s;
+ const move={id:'report-return-history',personId:'report-person',kind:'temporary',permitId:'',at:'2026-03-09T01:00:00Z',due:'2026-03-10T04:00:00Z',returnedAt:'2026-03-10T02:00:00Z'};
+ state.movements=[move,{...move,id:'report-later-arrival',kind:'arrival',at:'2026-03-11T03:00:00Z',returnedAt:null}];
+ const expected=state.revision;state.revision++;assert.equal((await db.query('select gate_console_commit($1,$2) ok',[expected,state])).rows[0].ok,true);
+ const result=(await db.query("select gate_console_read('','2026-03-10','2026-03-11') as s")).rows[0].s;
+ assert.ok(result.movements.some(m=>m.id===move.id));
 });

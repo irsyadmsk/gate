@@ -8,11 +8,19 @@ export async function localGateRequest<T>(path: string, data?: unknown): Promise
   return result as T;
 }
 export interface ConsoleService extends BoardingService {
+  cards(ids: string[], reference: string): Promise<{people: import('@irsyads/gate-core').GatePerson[];reference:string}>;
+  storageInfo(): Promise<{ready:boolean;provider:string;maxBytes:number}>;
+  uploadPhoto(entryId:string,reference:string,base64:string): Promise<{id:string;entryId:string;status:string}>;
+  readPhoto(reference:string): Promise<{mimeType:string;base64:string}>;
   lookup(token: string): Promise<{ kind: "person" | "visit"; id: string }>;
 }
 /** Hanya fixture loopback memakai adapter ini. Tidak diimpor GateRoot produksi. */
 export const localBoardingService: ConsoleService = {
-  snapshot: () => localGateRequest<BoardingSnapshot>("/api/snapshot"),
+  snapshot: (range) => localGateRequest<BoardingSnapshot>('/api/operations',{op:'snapshot',range}),
+  cards: (ids,reference) => localGateRequest('/api/operations',{op:'cards.print',ids,reference}),
+  storageInfo: () => localGateRequest('/api/operations',{op:'storage.info'}),
+  uploadPhoto: (entryId,reference,base64) => localGateRequest('/api/operations',{op:'photo.upload',entryId,reference,base64}),
+  readPhoto: (reference) => localGateRequest('/api/operations',{op:'photo.read',reference}),
   command: (command: BoardingCommand) => localGateRequest("/api/command", command),
   lookup: (token) => localGateRequest("/api/lookup", { token }),
   logout: () => localGateRequest("/api/logout", {}),

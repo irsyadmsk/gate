@@ -17,6 +17,10 @@ async function nativeRequest<T>(op: string, data: Record<string, unknown> = {}, 
 }
 export const nativeBoardingService: ConsoleService = {
   snapshot: (range) => nativeRequest<BoardingSnapshot>('snapshot', { range }),
+  cards: (ids,reference) => nativeRequest('cards.print',{ids,reference}),
+  storageInfo: () => nativeRequest('storage.info'),
+  uploadPhoto: (entryId,reference,base64) => nativeRequest('photo.upload',{entryId,reference,base64}),
+  readPhoto: (reference) => nativeRequest('photo.read',{reference}),
   command: (command) => nativeRequest('command', { command }),
   lookup: (token) => nativeRequest('lookup', { token }),
   logout: async () => { const result = await supabase.auth.signOut({ scope: 'local' }); if (result.error) throw result.error; },

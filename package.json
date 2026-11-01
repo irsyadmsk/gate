@@ -13,7 +13,8 @@
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "build:engine": "node scripts/build-gate-native.mjs",
     "preview:fixture": "node scripts/preview-gate-boarding.mjs",
-    "astro": "astro"
+    "astro": "astro",
+    "drive:connect": "node scripts/drive-oauth.mjs"
   },
   "dependencies": {
     "@astrojs/react": "6.0.5",

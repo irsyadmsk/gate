@@ -8,3 +8,7 @@ scratch/
 !.env.example
 *.log
 supabase/.temp/
+
+# Owner OAuth downloads and temporary private setup files
+client_secret*.json
+gate-oauth-client*.json

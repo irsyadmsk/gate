@@ -19,7 +19,7 @@ Buka http://127.0.0.1:4341. `npm run build` menghasilkan dist/; `npm run preview
 
 - Frontend, inti aturan Gate, tes, dan sumber Edge Functions Gate berada di repositori ini.
 - Login tetap melalui Irsyads ID. Sesi, profil akun, RBAC, dan database Supabase masih memakai layanan Irsyads yang sudah ada. Pemisahan repositori tidak membuat proyek database atau akun baru.
-- Administrasi GTK/kartu, pengasuh, penerima tamu, dan akun tetap tersedia melalui integrasi Studio. Panel Studio dipelihara di repositori Irsyads.
+- Kandidat ruang admin dan satpam kini tersedia langsung di Gate: GTK/kartu, status petugas, laporan, dan serah terima. Panel Studio lama tetap menjadi integrasi kompatibilitas; kandidat ini belum dirilis ke produksi. Lihat docs/2026-10-29_WORKSPACES_LOCAL.md.
 - Domain layanan yang sudah ada: https://gate.irsyads.com. Pemisahan ini tidak men-deploy ulang layanan atau mengubah database/DNS.
 
 Salinan terbatas adapter login/sesi berada di packages/supabase/src/; packages/design-tokens/src/preferences.ts hanya mendefinisikan tipe preferensi. Inti aturan di packages/gate/ juga memiliki salinan kompatibilitas di monorepo untuk Studio. Perubahan kontrak keduanya harus dikoordinasikan; lihat [catatan pemisahan](docs/EXTRACTION.md).
@@ -43,3 +43,7 @@ supabase/functions/{gate-console,gate-public,gate-tamu} dan migrasi Gate disalin
 `npm run build:engine` membentuk ulang engine fungsi dari inti aturan. Perubahan engine memerlukan tes ulang dan pemeriksaan kompatibilitas Studio. Penerapan backend, migrasi, dan deploy Cloudflare dilakukan secara sengaja dengan persetujuan pemilik. Tidak ada workflow Actions/deploy otomatis. Konfigurasi Worker gate berada di wrangler.jsonc.
 
 Kode dipublikasikan tanpa penambahan lisensi distribusi baru pada saat pemisahan.
+
+## Ruang kerja Gate (kandidat lokal)
+
+Admin dan satpam bekerja langsung melalui Gate. Satpam dapat meninjau keberadaan orang, kartu, buku jaga/foto, laporan, dan kiriman pergantian jaga. Admin mengelola GTK, kartu/tautan akun, pengasuh, penerima, serta pemberian/pencabutan hak satpam. Lihat [catatan implementasi](docs/2026-10-29_WORKSPACES_LOCAL.md) dan [konfigurasi foto privat](docs/DRIVE_PHOTOS.md).
