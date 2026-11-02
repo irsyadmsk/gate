@@ -25,7 +25,7 @@ Instruksi pemilik: pertahankan `gate.irsyads.com`, pindahkan kebutuhan admin/sat
 
 ## Kandidat database dan pemulihan
 
-`20261029042446_gate_report_return_history.sql` dibuat melalui `supabase migration new`. Kandidat ini menambah indeks `last_at` dan memperbaiki pembacaan riwayat agar perjalanan yang kembali pada rentang laporan tetap terbaca walau keberangkatan dan pergerakan terbaru berada di luar rentang. RLS/grant tetap service-only. Tes PGlite mencakup kasus tersebut. Belum diterapkan pada database produksi; jangan menjalankan bulk `db push` dari repo hasil ekstraksi.
+`20261102000119_gate_report_return_history.sql` dibuat melalui `supabase migration new`. Kandidat ini menambah indeks `last_at` dan memperbaiki pembacaan riwayat agar perjalanan yang kembali pada rentang laporan tetap terbaca walau keberangkatan dan pergerakan terbaru berada di luar rentang. RLS/grant tetap service-only. Tes PGlite mencakup kasus tersebut. Sudah diterapkan ke produksi 2 November 2026; jangan menjalankan bulk `db push` dari repo hasil ekstraksi.
 
 Pemulihan fungsi baca lama ada di `ops/review/workspaces/rollback-return-history.sql`, tanpa penghapusan data. Saat merilis, rekonsiliasi riwayat migrasi bersama Irsyads dan tinjau advisors/schema aktual dahulu.
 
@@ -33,6 +33,6 @@ Pemulihan fungsi baca lama ada di `ops/review/workspaces/rollback-return-history
 
 ## Yang belum diaktifkan
 
-Perubahan berada pada branch lokal `codex/gate-admin-guard-workspaces`, belum commit/push, deploy, penerapan migrasi, atau data sekolah ditulis. Pengecualian remote yang disetujui pemilik hanyalah pengubahan folder Drive menjadi Dibatasi.
+Sudah di `main` dan tayang sejak 2 November 2026 (migrasi, `gate-console`, `gate-public`, Worker `gate`). Pengecualian remote yang disetujui pemilik hanyalah pengubahan folder Drive menjadi Dibatasi.
 
 OAuth server Drive masih kosong. Aktivasi perlu kredensial server yang disetujui pemilik, uji unggah/baca pada folder privat yang sama, pemeriksaan kuota, dan rilis terarah: rekonsiliasi migrasi → fungsi `gate-console`/`gate-public` yang kompatibel → frontend Worker `gate` di domain yang sama → cek akun asli/izin/hash. Pertahankan layanan lama sampai paket lengkap siap. Koneksi Drive chat bukan kredensial server; jangan mengambil atau menyalinnya.

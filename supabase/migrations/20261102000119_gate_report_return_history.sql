@@ -1,5 +1,4 @@
 -- Gate reports must include a return in the range even when departure and latest arrival are outside it.
--- Local candidate only. Apply after reviewing shared Supabase migration history.
 begin;
 create index if not exists gate_console_movements_last_at_idx on public.gate_console_movements(last_at);
 create or replace function public.gate_console_read(p_receipt text default '',p_from timestamptz default now()-interval '7 days',p_until timestamptz default now()+interval '1 day') returns jsonb

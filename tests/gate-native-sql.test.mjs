@@ -16,7 +16,7 @@ before(async()=>{
  insert into user_accounts values('${admin}','staf','active',false,'admin@contoh.test'),('${staff}','staf','active',false,'staf@contoh.test'),('${student}','sekolah','active',false,'murid@contoh.test');
  insert into auth.sessions values('${session}','${staff}'); grant select on user_accounts,profiles,user_roles,role_permissions to service_role;`);
  await db.exec(await readFile('supabase/migrations/20261027044347_gate_console_native.sql','utf8'));
- await db.exec(await readFile('supabase/migrations/20261029042446_gate_report_return_history.sql','utf8'));
+ await db.exec(await readFile('supabase/migrations/20261102000119_gate_report_return_history.sql','utf8'));
 });
 after(()=>db?.close());
 test('native SQL: seluruh tabel tersembunyi dari anon/authenticated; hanya identity yang dapat dipanggil user',async()=>{
