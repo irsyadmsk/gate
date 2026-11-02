@@ -14,7 +14,7 @@ Gate menjadi repositori tersendiri di `irsyadmsk/gate`, dengan aplikasi Astro di
 | Panel administrasi Gate di Studio | Monorepo Irsyads |
 | Riwayat migrasi Supabase bersama | Monorepo Irsyads tetap menjadi catatan penerapan; salinan migrasi di sini untuk referensi/tes |
 
-`packages/gate` di monorepo dipertahankan agar Studio dan tes integrasinya tetap berfungsi. Sumber fungsi Gate serta migrasi yang sudah diterapkan juga tetap ada di monorepo untuk kontinuitas backend bersama. Salinan tersebut bukan aplikasi Gate kedua. Hindari menerapkan perubahan dari dua checkout secara bersamaan.
+`packages/gate` di monorepo dipertahankan agar Studio dan tes integrasinya tetap berfungsi. Sejak 2 November 2026 sumber Edge Functions Gate (`gate-console`, `gate-public`, `gate-tamu`) hanya ada di repositori ini dan dideploy dari sini; salinannya di monorepo sudah dihapus. Migrasi yang sudah diterapkan tetap ada di monorepo sebagai catatan penerapan backend bersama.
 
 Studio menyimpan modul UI, adapter native, dan tipe HTTP yang dibutuhkannya sendiri. Build produksi Studio tidak mengimpor direktori aplikasi Gate. Tes HTTP aplikasi Gate dipindahkan ke repositori ini; skrip pratinjau integrasi manual di monorepo membutuhkan checkout Gate sebagai folder saudara.
 
