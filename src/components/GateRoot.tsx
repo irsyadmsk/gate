@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { Capacitor } from '@capacitor/core';
 import type { GateRemote } from "@irsyads/gate-core";
 import type { GateAuth } from "../lib/auth";
 import GateApp from "./GateApp";
@@ -13,8 +14,10 @@ const REMOTE_ENABLED = import.meta.env.PUBLIC_GATE_REMOTE !== "0";
 const GUEST_ENABLED = REMOTE_ENABLED && import.meta.env.PUBLIC_GATE_GUEST === "1";
 const CONSOLE_ENABLED = import.meta.env.PUBLIC_GATE_CONSOLE !== "0";
 const NativeGateRoot = lazy(() => import('./console/NativeGateRoot'));
+const AndroidGateRoot = lazy(() => import('./console/AndroidGateRoot'));
 
 export default function GateRoot() {
+  if (Capacitor.getPlatform() === 'android') return <Suspense fallback={<main className="gate-loading">Memuat Gate…</main>}><AndroidGateRoot /></Suspense>;
   if (CONSOLE_ENABLED) return <Suspense fallback={<main className="gate-loading">Memuat Gate…</main>}><NativeGateRoot /></Suspense>;
   const [wiring, setWiring] = useState<{ remote: GateRemote; auth: GateAuth } | null>(null);
   const [failed, setFailed] = useState(false);

@@ -36,6 +36,10 @@ npm run preview:fixture
 
 Server fixture hanya mendengarkan loopback di http://127.0.0.1:4571, tidak mengakses Supabase, dan menyimpan state contoh di scratch/ yang diabaikan Git. Akun serta sandinya hanya berlaku di server fixture. Route fixture /studio merupakan alias konsol Gate untuk pemeriksaan HTTP; antarmuka Studio asli tidak disalin.
 
+## Android
+
+Proyek Capacitor ada di `android/`. [Panduan Android](docs/ANDROID_DEVELOPMENT.md) menjelaskan build APK uji dan cara menghubungkan HP ke fixture melalui USB. [Rencana Play Store](docs/ANDROID_PLAY_STORE_PLAN.md) memuat cakupan dan syarat rilis.
+
 ## Backend dan publikasi
 
 supabase/functions/{gate-console,gate-public,gate-tamu} dan migrasi Gate disalin sebagai sumber yang sudah ada. Migrasi membutuhkan skema identitas/RBAC Irsyads; ini bukan bootstrap Supabase baru. ops/review/ hanya berisi SQL skema untuk tes. Tidak ada data sekolah, backup database, riwayat monorepo, .env, atau secret server yang disertakan.

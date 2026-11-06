@@ -1,0 +1,23 @@
+---
+import Dasar from '@/layouts/Dasar.astro';
+import AndroidConsent from '@/components/console/AndroidConsent';
+
+const clientId = import.meta.env.PUBLIC_GATE_ANDROID_OAUTH_CLIENT_ID?.trim();
+const host = import.meta.env.PUBLIC_GATE_ANDROID_APP_LINK_HOST?.trim();
+const rawLogin = import.meta.env.PUBLIC_GATE_ANDROID_CONSENT_LOGIN_URL;
+let loginUrl: string | null = null;
+if (rawLogin) {
+  const login = new URL(rawLogin);
+  if (login.protocol !== 'https:' || login.username || login.password || login.hash || !host || !clientId ||
+      !import.meta.env.PUBLIC_SUPABASE_URL || !import.meta.env.PUBLIC_SUPABASE_ANON_KEY) {
+    throw new Error('Konfigurasi persetujuan OAuth Android staging belum lengkap.');
+  }
+  loginUrl = login.href;
+}
+---
+
+<Dasar title="Hubungkan akun ke Gate Android" description="Otorisasi perangkat untuk Irsyads Gate Android.">
+  {clientId && host && loginUrl
+    ? <AndroidConsent client:only="react" clientId={clientId} host={host} loginUrl={loginUrl} />
+    : <main><h1>Persetujuan Android belum tersedia di situs ini.</h1><p>Kembali ke aplikasi Gate untuk memeriksa alamat login.</p></main>}
+</Dasar>

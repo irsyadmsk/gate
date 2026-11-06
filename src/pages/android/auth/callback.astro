@@ -1,0 +1,15 @@
+---
+import Dasar from '@/layouts/Dasar.astro';
+import '@/styles/console.css';
+---
+
+<Dasar title="Kembali ke Gate Android" description="Lanjutkan proses masuk dari aplikasi Irsyads Gate Android.">
+  <div class="gc"><main class="gc-public">
+    <p class="gc-kicker">IRSYADS GATE</p>
+    <h1>Kembali ke Gate Android</h1>
+    <p>Jika aplikasi belum terbuka, periksa setelan tautan Irsyads Gate di Android. Buka kembali aplikasi dan mulai login dari sana.</p>
+  </main></div>
+  <script is:inline>
+    history.replaceState(null, '', location.pathname);
+  </script>
+</Dasar>

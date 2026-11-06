@@ -6,6 +6,18 @@ export default function ConsoleScanner({ found, busy, continuous = false }: { fo
   useEffect(() => {
     if (!active) return;
     let live = true, stream: MediaStream | null = null, frame = 0, lastRead = 0, heldCode = "", lastSeen = 0, processing = false;
+    const stop = () => {
+      live = false;
+      cancelAnimationFrame(frame);
+      stream?.getTracks().forEach((track) => track.stop());
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        stop();
+        setActive(false);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
     (async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 960 } }, audio: false });
@@ -34,9 +46,12 @@ export default function ConsoleScanner({ found, busy, continuous = false }: { fo
           frame = requestAnimationFrame(tick);
         };
         frame = requestAnimationFrame(tick);
-      } catch { if (live) { setError("Kamera belum dapat dibuka. Izinkan kamera di peramban, atau gunakan kode tertulis."); setActive(false); } }
+      } catch { if (live) { setError("Kamera belum dapat dibuka. Periksa izin kamera perangkat, atau gunakan kode tertulis."); setActive(false); } }
     })();
-    return () => { live = false; cancelAnimationFrame(frame); stream?.getTracks().forEach((t) => t.stop()); };
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      stop();
+    };
   }, [active, continuous]);
   return <div className="gc-stack">
     <div className="gc-scanner">{active ? <><video ref={video} autoPlay muted playsInline /><span className="gc-scanner-guide" /></> : <div className="gc-scanner-start"><Icon name="scan" size={60} /><p>Arahkan QR kartu murid, GTK, atau kode kunjungan ke kamera HP.</p><button type="button" className="gc-primary" disabled={busy} onClick={() => { setError(""); setActive(true); }}><Icon name="camera" />Buka kamera</button></div>}</div>

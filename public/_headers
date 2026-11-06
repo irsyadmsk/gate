@@ -10,3 +10,6 @@
 
 https://:project.workers.dev/*
   X-Robots-Tag: noindex
+
+/android/auth/*
+  Cache-Control: no-store

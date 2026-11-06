@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "astro dev --host 127.0.0.1 --port 4341",
     "build": "astro build",
+    "android:sync": "npm run build && cap sync android",
     "preview": "astro preview --host 127.0.0.1 --port 4342",
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "build:engine": "node scripts/build-gate-native.mjs",
@@ -18,6 +19,10 @@
   },
   "dependencies": {
     "@astrojs/react": "6.0.5",
+    "@capacitor/android": "8.6.0",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.0",
+    "@supabase/supabase-js": "2.114.0",
     "@types/qrcode": "1.5.6",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
@@ -25,14 +30,14 @@
     "jsqr": "1.4.0",
     "qrcode": "1.5.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "@supabase/supabase-js": "2.114.0"
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.6.0",
     "@electric-sql/pglite": "0.5.8",
+    "@types/node": "24.13.3",
     "esbuild": "0.28.2",
-    "wrangler": "4.149.0",
     "typescript": "6.0.3",
-    "@types/node": "24.13.3"
+    "wrangler": "4.149.0"
   }
 }

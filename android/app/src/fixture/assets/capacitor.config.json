@@ -1,0 +1,9 @@
+{
+  "appId": "com.irsyads.gate.fixture",
+  "appName": "Irsyads Gate Uji",
+  "webDir": "dist",
+  "server": {
+    "url": "http://127.0.0.1:4571",
+    "errorPath": "fixture-disconnected.html"
+  }
+}

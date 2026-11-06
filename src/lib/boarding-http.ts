@@ -14,6 +14,21 @@ export interface ConsoleService extends BoardingService {
   readPhoto(reference:string): Promise<{mimeType:string;base64:string}>;
   lookup(token: string): Promise<{ kind: "person" | "visit"; id: string }>;
 }
+
+type ConsoleRequest = <T>(op: string, data?: Record<string, unknown>) => Promise<T>;
+
+export function createConsoleService(request: ConsoleRequest, logout: ConsoleService['logout']): ConsoleService {
+  return {
+    snapshot: (range) => request('snapshot', { range }),
+    cards: (ids, reference) => request('cards.print', { ids, reference }),
+    storageInfo: () => request('storage.info'),
+    uploadPhoto: (entryId, reference, base64) => request('photo.upload', { entryId, reference, base64 }),
+    readPhoto: (reference) => request('photo.read', { reference }),
+    command: (command) => request('command', { command }),
+    lookup: (token) => request('lookup', { token }),
+    logout,
+  };
+}
 /** Hanya fixture loopback memakai adapter ini. Tidak diimpor GateRoot produksi. */
 export const localBoardingService: ConsoleService = {
   snapshot: (range) => localGateRequest<BoardingSnapshot>('/api/operations',{op:'snapshot',range}),
