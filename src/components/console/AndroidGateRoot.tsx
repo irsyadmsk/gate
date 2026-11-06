@@ -6,6 +6,7 @@ import { Icon } from './ui';
 import '../../styles/console.css';
 
 const boarding = createAndroidBoarding();
+const guestUrl = new URL('/tamu', import.meta.env.PUBLIC_GATE_ORIGIN || 'https://gate.irsyads.com').href;
 
 export default function AndroidGateRoot() {
   const [signedIn, setSignedIn] = useState<boolean | undefined>(undefined);
@@ -67,7 +68,7 @@ export default function AndroidGateRoot() {
     finally { setBusy(false); }
   }
 
-  if (signedIn && boarding) return <GateConsole service={boarding.service} signedOut={() => { setNotice(''); setSignedIn(false); }} />;
+  if (signedIn && boarding) return <GateConsole service={boarding.service} externalGuestUrl={guestUrl} signedOut={() => { setNotice(''); setSignedIn(false); }} />;
   return <div className="gc"><main className="gc-public">
     <div className="gc-brand"><span className="gc-brandmark"><Icon name="shield" /></span><div><strong>Gate</strong><small>AKSES & KEAMANAN</small></div></div>
     <div className="gc-empty">
@@ -79,6 +80,6 @@ export default function AndroidGateRoot() {
       Masuk melalui Irsyads ID<Icon name="arrow" />
     </button>}
     {notice && <p className="gc-callout" role="status">{notice}</p>}
-    <p><a className="gc-button gc-full" href="https://gate.irsyads.com/tamu">Saya datang sebagai tamu</a></p>
+    <p><a className="gc-button gc-full" href={guestUrl}>Saya datang sebagai tamu</a></p>
   </main></div>;
 }

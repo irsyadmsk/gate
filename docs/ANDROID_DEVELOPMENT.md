@@ -65,3 +65,16 @@ APK `scratch/gate-uat/irsyads-gate-uat-debug.apk` memakai host `gate-uat.irsyads
 APK berhasil dipasang di emulator Android 16. Android melaporkan `gate-uat.irsyads.com: verified` dan menemukan aktivitas Gate serta Chrome untuk URL callback. Pemeriksaan aktivitas default mengembalikan pemilih aplikasi Android. Uji membuka tautan dari browser dan menyelesaikan login tetap diperlukan pada perangkat.
 
 Pembuatan proyek Supabase `gate-uat` di organisasi `irsyads.com` ditolak karena akun pemilik telah memakai dua slot proyek gratis aktif. Domain UAT saat ini melayani aset statis untuk uji App Link. Alur OAuth dan API Gate telah diuji dengan stack Supabase lokal yang memakai akun sintetis.
+
+## Uji pengemasan AAB lokal
+
+Gunakan `bundleDebug` untuk memeriksa pengemasan tanpa akses Play Console atau upload key penerbit. Jalankan dari root repo dengan JDK dan SDK yang sama dengan build APK.
+
+```powershell
+npm run android:sync
+Push-Location android
+.\gradlew.bat :app:bundleDebug
+Pop-Location
+```
+
+Hasilnya `android/app/build/outputs/bundle/debug/app-debug.aab` dengan paket `com.irsyads.gate.debug`. Jalankan `bundletool validate --bundle=<file>` untuk memeriksa struktur, lalu `bundletool build-apks --mode=universal --bundle=<file> --output=<file.apks>` untuk menguji pembentukan APK. Gunakan `apksigner verify` pada APK hasil ekstraksi. AAB ini untuk pemeriksaan lokal dan memakai kunci debug. Pengajuan Play memakai paket rilis `com.irsyads.gate` dan upload key milik penerbit. [Dokumentasi bundletool](https://developer.android.com/tools/bundletool)
