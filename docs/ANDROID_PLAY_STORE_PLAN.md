@@ -2,6 +2,8 @@
 
 Status: usulan per 6 November 2026. Hasil akhir yang dituju adalah Android App Bundle (`.aab`) bertanda tangan, sudah dipasang melalui Google Play pada perangkat uji, dan dilengkapi materi serta akses yang diperlukan untuk pengajuan review.
 
+[Materi pengajuan](ANDROID_PLAY_SUBMISSION.md) memuat draf listing, aset grafis, instruksi reviewer, dan inventaris data untuk persiapan Play Console.
+
 APK fixture dan klien Android OAuth/PKCE sudah dibangun lokal. Klien memakai transport HTTP Android untuk `gate-console` dengan verifikasi sesi dan peran yang sudah ada. Pengujian Irsyads ID dan App Link pada staging, serta uji HP pos, masih diperlukan. [Panduan build dan konfigurasi Android](ANDROID_DEVELOPMENT.md)
 
 ## Dasar dan cakupan versi 1

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>Irsyads Gate · Aset Google Play</title>
+  <style>
+    @font-face {
+      font-family: Gate;
+      src: url('../../public/gate-font.woff2') format('woff2');
+      font-weight: 400 800;
+      font-display: swap;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0b1d35; color: #f3ede2; font-family: Gate, system-ui, sans-serif; }
+    .feature {
+      width: 1024px;
+      height: 500px;
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(ellipse at 80% 51%, #294d73 0%, #183451 34%, #0b1d35 72%);
+    }
+    .feature::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, #b0c6d414 1px, transparent 1px),
+        linear-gradient(#b0c6d414 1px, transparent 1px);
+      background-size: 36px 36px;
+      mask-image: linear-gradient(90deg, transparent 35%, black 80%);
+    }
+    .copy { position: absolute; left: 114px; top: 159px; }
+    .eyebrow { margin: 0 0 18px; color: #e3d5c1; font-size: 15px; font-weight: 700; letter-spacing: .22em; }
+    h1 { margin: 0; font-size: 72px; font-weight: 800; letter-spacing: -.065em; line-height: 1; }
+    .caption { margin: 23px 0 0; color: #e4d9cb; font-size: 24px; font-weight: 500; letter-spacing: -.025em; }
+    .plan { position: absolute; width: 316px; height: 300px; top: 100px; right: 102px; }
+    .icon { display: none; place-items: center; width: 512px; height: 512px; background: #0b1d35; }
+    .icon svg { width: 428px; height: 428px; }
+    .icon-mode .feature { display: none; }
+    .icon-mode .icon { display: grid; }
+  </style>
+</head>
+<body>
+  <main class="feature">
+    <svg class="plan" viewBox="0 0 316 300" fill="none" role="img" aria-label="Denah garis jalur akses gerbang">
+      <rect x="12" y="24" width="292" height="252" rx="28" stroke="#89a9c2" stroke-opacity=".46" stroke-width="2" />
+      <path d="M158 53V247" stroke="#8db1cc" stroke-opacity=".35" stroke-width="2" stroke-dasharray="5 10" />
+      <path d="M36 150H118M198 150H280" stroke="#d9ccba" stroke-opacity=".56" stroke-width="2" stroke-dasharray="5 8" />
+      <path d="M60 123H119Q137 123 137 141V198Q137 217 157 217H258" stroke="#92bedf" stroke-width="4" stroke-linecap="round" />
+      <path d="M60 178H100Q118 178 118 160V111Q118 90 140 90H257" stroke="#f3ede2" stroke-width="4" stroke-linecap="round" />
+      <path d="M189 128V171M209 128V171" stroke="#e6d6bf" stroke-width="5" stroke-linecap="round" />
+      <path d="m251 84 8 6-8 6m0 115 8 6-8 6" stroke="#f3ede2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="60" cy="123" r="7" fill="#92bedf" />
+      <circle cx="60" cy="178" r="7" fill="#f3ede2" />
+      <circle cx="157" cy="217" r="6" fill="#0b1d35" stroke="#92bedf" stroke-width="3" />
+    </svg>
+    <div class="copy">
+      <p class="eyebrow">RUANG KERJA POS SEKOLAH</p>
+      <h1>Irsyads Gate</h1>
+      <p class="caption">Akses, kunjungan, dan serah terima</p>
+    </div>
+  </main>
+  <div class="icon">
+    <svg viewBox="0 0 64 64" role="img" aria-label="Ikon gerbang Irsyads Gate" fill="none" stroke="#f3ede2" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 50V26M50 50V26M14 50h36M12 26l20-10 20 10" />
+      <path d="M14 30h36" stroke="#d9ccb9" />
+      <path d="M14 40h36" stroke="#376a9b" stroke-width="4" />
+    </svg>
+  </div>
+  <script>if (location.hash === '#icon') document.body.classList.add('icon-mode');</script>
+</body>
+</html>
