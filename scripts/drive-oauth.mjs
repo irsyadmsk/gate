@@ -19,9 +19,11 @@ export async function savePrivateEnv(file,patch) {
   const handle=await open(temporary,'wx',0o600);
   try{
     if(process.platform==='win32') {
-      const sid=execFileSync('whoami',['/user','/fo','csv','/nh'],{encoding:'utf8',windowsHide:true}).match(/S-1-\d+(?:-\d+)+/)?.[0];
+      // Path absolut: nama pendek bisa jatuh ke whoami GNU (Git Bash) atau berkas yang disisipkan di PATH.
+      const system32=path.join(process.env.SystemRoot||process.env.windir||'C:\\Windows','System32');
+      const sid=execFileSync(path.join(system32,'whoami.exe'),['/user','/fo','csv','/nh'],{encoding:'utf8',windowsHide:true}).match(/S-1-\d+(?:-\d+)+/)?.[0];
       if(!sid)throw Error('Tidak dapat memastikan pemilik berkas rahasia.');
-      execFileSync('icacls',[temporary,'/inheritance:r','/grant:r','*'+sid+':(F)','*S-1-5-18:(F)'],{stdio:'ignore',windowsHide:true});
+      execFileSync(path.join(system32,'icacls.exe'),[temporary,'/inheritance:r','/grant:r','*'+sid+':(F)','*S-1-5-18:(F)'],{stdio:'ignore',windowsHide:true});
     }
     await handle.writeFile(output,'utf8');await handle.sync();await handle.close();await rename(temporary,file);
   }catch(error){await handle.close().catch(()=>{});await unlink(temporary).catch(()=>{});throw error;}
