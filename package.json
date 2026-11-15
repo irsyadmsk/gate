@@ -10,6 +10,7 @@
     "dev": "astro dev --host 127.0.0.1 --port 4341",
     "build": "astro build",
     "android:sync": "npm run build && cap sync android",
+    "android:bundle:release": "node scripts/android-release.mjs",
     "preview": "astro preview --host 127.0.0.1 --port 4342",
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "build:engine": "node scripts/build-gate-native.mjs",

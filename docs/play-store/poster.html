@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>Poster Irsyads Gate</title>
+  <style>
+    @font-face {
+      font-family: Gate;
+      src: url('../../public/gate-font.woff2') format('woff2');
+      font-weight: 400 800;
+      font-display: swap;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Gate, system-ui, sans-serif; }
+    main {
+      position: relative; isolation: isolate; width: 1080px; height: 1350px; overflow: hidden;
+      padding: 106px 98px 85px; color: #f3ede2;
+      background: radial-gradient(ellipse at 76% 54%, #2a5379, #173451 43%, #0b1d35 79%);
+    }
+    main::before {
+      content: ''; position: absolute; z-index: -1; inset: 0;
+      background: linear-gradient(90deg, #bfd0de19 1px, transparent 1px), linear-gradient(#bfd0de19 1px, transparent 1px);
+      background-size: 54px 54px; mask-image: radial-gradient(ellipse at 78% 53%, black, transparent 73%);
+    }
+    .eyebrow, .footer { color: #e3d5c1; font-size: 25px; font-weight: 700; letter-spacing: .16em; }
+    .eyebrow { display: flex; align-items: center; gap: 22px; margin: 0 0 32px; }
+    .eyebrow svg { width: 54px; height: 54px; }
+    h1 { margin: 0; font-size: 139px; letter-spacing: -.078em; line-height: 1; }
+    .description { width: 800px; margin: 33px 0 0; font-size: 38px; line-height: 1.28; color: #e7dece; }
+    .map { display: block; width: 884px; height: 450px; margin: 38px 0 42px; }
+    .features { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin: 0; padding: 0; list-style: none; }
+    .features li { border-top: 2px solid #9bb8cf8c; padding: 22px 0 0; font-size: 27px; font-weight: 700; }
+    .features span { display: block; color: #a4c4dd; font-size: 19px; letter-spacing: .15em; margin-bottom: 12px; }
+    .footer { margin: 71px 0 0; font-size: 19px; }
+    .story main { height: 1920px; padding-top: 240px; }
+    .story .map { height: 580px; margin-top: 58px; margin-bottom: 65px; }
+    .story .footer { margin-top: 97px; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">
+      <svg viewBox="0 0 64 64" fill="none" stroke="#f3ede2" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14 50V26M50 50V26M14 50h36M12 26l20-10 20 10" />
+        <path d="M14 30h36" stroke="#d9ccb9" />
+        <path d="M14 40h36" stroke="#81aad0" stroke-width="4" />
+      </svg>
+      RUANG KERJA POS SEKOLAH
+    </p>
+    <h1>Irsyads Gate</h1>
+    <p class="description">Pencatatan gerbang dan serah terima jaga untuk sekolah berasrama.</p>
+    <svg class="map" viewBox="0 0 884 450" fill="none" aria-hidden="true">
+      <rect x="1" y="24" width="882" height="400" rx="38" fill="#0d263b" fill-opacity=".38" stroke="#a5c4da" stroke-opacity=".48" stroke-width="2" />
+      <path d="M441 65V382M67 225H816" stroke="#a9c5da" stroke-opacity=".44" stroke-width="2" stroke-dasharray="8 14" />
+      <path d="M113 170H306Q342 170 342 207V290Q342 329 382 329H741" stroke="#9cc7e6" stroke-width="7" stroke-linecap="round" />
+      <path d="M113 284H241Q281 284 281 244V160Q281 120 322 120H741" stroke="#f3ede2" stroke-width="7" stroke-linecap="round" />
+      <path d="M526 192V256M564 192V256" stroke="#ead9bf" stroke-width="9" stroke-linecap="round" />
+      <path d="m726 108 16 12-16 12m0 185 16 12-16 12" stroke="#f3ede2" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="113" cy="170" r="12" fill="#9cc7e6" />
+      <circle cx="113" cy="284" r="12" fill="#f3ede2" />
+      <circle cx="442" cy="329" r="10" fill="#0b1d35" stroke="#9cc7e6" stroke-width="5" />
+    </svg>
+    <ul class="features">
+      <li><span>01</span>QR GTK</li>
+      <li><span>02</span>Izin murid dan tamu</li>
+      <li><span>03</span>Serah terima jaga</li>
+    </ul>
+    <p class="footer">AKSES MELALUI IRSYADS ID</p>
+  </main>
+  <script>if (location.hash === '#story') document.body.classList.add('story');</script>
+</body>
+</html>
