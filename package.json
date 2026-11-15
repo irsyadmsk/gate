@@ -13,6 +13,7 @@
     "android:bundle:release": "node scripts/android-release.mjs",
     "preview": "astro preview --host 127.0.0.1 --port 4342",
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "check:public": "node scripts/check-public-repo.mjs",
     "build:engine": "node scripts/build-gate-native.mjs",
     "preview:fixture": "node scripts/preview-gate-boarding.mjs",
     "astro": "astro",
