@@ -27,7 +27,7 @@ Backend memeriksa bahwa folder benar-benar folder, dapat ditambahi berkas oleh a
 
 ## Bukti saat ini
 
-Pada 29 Oktober 2026 pemilik memberikan folder tujuan dan menyetujui pengubahan akses umum menjadi Dibatasi. Perubahan dilakukan melalui Google Drive, lalu metadata diperiksa ulang: hanya izin pemilik yang tersisa. Bukti privat di `scratch/workspaces-proof/drive-restricted.png`.
+Pada 29 Oktober 2026 pemilik memberikan folder tujuan dan menyetujui pengubahan akses umum menjadi Dibatasi. Perubahan dilakukan melalui Google Drive, lalu metadata diperiksa ulang: hanya izin pemilik yang tersisa. Tangkapan layar bukti disimpan pemilik di luar repo.
 
 Unggah/baca foto sintetis telah diuji pada provider lokal loopback. Provider Drive diuji dengan HTTP palsu untuk folder publik, retry 409, parent yang salah, dan cache access token. **Belum ada unggahan nyata ke Google Drive, token OAuth server, atau uji kuota/delivery produksi.**
 

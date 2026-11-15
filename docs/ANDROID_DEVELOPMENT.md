@@ -58,13 +58,13 @@ Stack Docker terpisah menguji OAuth PKCE dengan penyedia Supabase Auth dan Postg
 
 ## Domain uji Android
 
-Pada 6 November 2026, Worker statis `gate-uat` dipasang pada [gate-uat.irsyads.com](https://gate-uat.irsyads.com). Versi `b891cebb-2074-4b96-b6d5-ceba14187b80` memuat halaman informasi, halaman kembali ke aplikasi, dan [assetlinks.json](https://gate-uat.irsyads.com/.well-known/assetlinks.json). File JSON dilayani lewat HTTPS tanpa redirect dan cocok dengan paket serta sertifikat APK debug. Pemeriksaan Google Digital Asset Links mengembalikan `linked: true`. Aset dan konfigurasi manual ada di `scratch/gate-uat/`.
+Pada 6 November 2026, Worker statis `gate-uat` dipasang pada [gate-uat.irsyads.com](https://gate-uat.irsyads.com). Worker itu memuat halaman informasi, halaman kembali ke aplikasi, dan [assetlinks.json](https://gate-uat.irsyads.com/.well-known/assetlinks.json). File JSON dilayani lewat HTTPS tanpa redirect dan cocok dengan paket serta sertifikat APK debug. Pemeriksaan Google Digital Asset Links mengembalikan `linked: true`.
 
-APK `scratch/gate-uat/irsyads-gate-uat-debug.apk` memakai host `gate-uat.irsyads.com` dan paket `com.irsyads.gate.debug`. Build ini dipakai untuk memeriksa App Link. Halaman persetujuan dan login baru dapat diuji secara daring setelah proyek Supabase dan portal ID staging terhubung. APK rilis kelak memerlukan relasi tersendiri untuk paket rilis dengan sertifikat Play App Signing.
+APK debug uji (tidak disertakan di repo) memakai host `gate-uat.irsyads.com` dan paket `com.irsyads.gate.debug`. Build ini dipakai untuk memeriksa App Link. Halaman persetujuan dan login baru dapat diuji secara daring setelah proyek Supabase dan portal ID staging terhubung. APK rilis kelak memerlukan relasi tersendiri untuk paket rilis dengan sertifikat Play App Signing.
 
 APK berhasil dipasang di emulator Android 16. Android melaporkan `gate-uat.irsyads.com: verified` dan menemukan aktivitas Gate serta Chrome untuk URL callback. Pemeriksaan aktivitas default mengembalikan pemilih aplikasi Android. Uji membuka tautan dari browser dan menyelesaikan login tetap diperlukan pada perangkat.
 
-Pembuatan proyek Supabase `gate-uat` di organisasi `irsyads.com` ditolak karena akun pemilik telah memakai dua slot proyek gratis aktif. Domain UAT saat ini melayani aset statis untuk uji App Link. Alur OAuth dan API Gate telah diuji dengan stack Supabase lokal yang memakai akun sintetis.
+Belum ada proyek Supabase uji terpisah. Domain UAT saat ini melayani aset statis untuk uji App Link. Alur OAuth dan API Gate telah diuji dengan stack Supabase lokal yang memakai akun sintetis.
 
 ## Uji pengemasan AAB lokal
 

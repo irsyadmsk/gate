@@ -48,6 +48,10 @@ supabase/functions/{gate-console,gate-public,gate-tamu} dan migrasi Gate disalin
 
 Kode dipublikasikan tanpa penambahan lisensi distribusi baru pada saat pemisahan.
 
+## Keamanan repo terbuka
+
+Cara melapor kerentanan ada di [SECURITY.md](SECURITY.md). Sebelum push jalankan `npm run check:public` (tambahkan `-- --history` untuk memeriksa riwayat Git). `npm run build` menulis Content-Security-Policy ke `dist/_headers` dengan hash skrip inline (`scripts/write-csp.mjs`), dan halaman tidak memuat font atau skrip pihak ketiga. Rencana perbaikan dan aturan lengkap: [docs/ATURAN_PERBAIKAN.md](docs/ATURAN_PERBAIKAN.md).
+
 ## Ruang kerja Gate (kandidat lokal)
 
 Admin dan satpam bekerja langsung melalui Gate. Satpam dapat meninjau keberadaan orang, kartu, buku jaga/foto, laporan, dan kiriman pergantian jaga. Admin mengelola GTK, kartu/tautan akun, pengasuh, penerima, serta pemberian/pencabutan hak satpam. Lihat [catatan implementasi](docs/2026-10-29_WORKSPACES_LOCAL.md) dan [konfigurasi foto privat](docs/DRIVE_PHOTOS.md).
