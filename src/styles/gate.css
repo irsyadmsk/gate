@@ -1,4 +1,5 @@
-/* Irsyads Gate — palet lima warna mandat merek; huruf Plus Jakarta Sans untuk informasi. */
+/* Irsyads Gate — palet lima warna mandat merek; huruf Gate Sans (berkas lokal, tanpa layanan font pihak ketiga). */
+@font-face{font-family:Gate Sans;src:url("/gate-font.woff2") format("woff2");font-style:normal;font-weight:200 800;font-display:swap}
 :root {
   --ivory: #F3EDE2; --navy: #0B1D35; --blue: #376A9B; --beige: #D9CCB9; --slate: #586574;
   --bg: var(--ivory); --ink: var(--navy); --muted: var(--slate); --line: var(--beige); --card: #fffdf8; --accent: var(--blue);
@@ -10,8 +11,8 @@
 
 * { box-sizing: border-box; }
 html { font-size: var(--fs); }
-body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Plus Jakarta Sans", system-ui, sans-serif; line-height: 1.45; -webkit-font-smoothing: antialiased; }
-h1, h2 { font-family: "Playfair Display", Georgia, serif; margin: 0; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Gate Sans", system-ui, sans-serif; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+h1, h2 { font-family: Georgia, "Times New Roman", serif; margin: 0; }
 button, input, select { font: inherit; color: inherit; }
 button { min-height: var(--touch); padding: 0 18px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); font-weight: 700; cursor: pointer; }
 button:disabled { opacity: .45; cursor: not-allowed; }
@@ -140,7 +141,7 @@ th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: le
 .stats > * { background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 8px 12px; display: flex; flex-direction: column; }
 .pos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 .pos h2 { font-size: 1.2rem; margin: 0 0 4px; }
-.pos .count { display: inline-block; min-width: 1.8em; padding: 0 8px; border-radius: 999px; background: var(--navy); color: var(--ivory); font: 700 .9rem "Plus Jakarta Sans", sans-serif; text-align: center; vertical-align: middle; }
+.pos .count { display: inline-block; min-width: 1.8em; padding: 0 8px; border-radius: 999px; background: var(--navy); color: var(--ivory); font: 700 .9rem "Gate Sans", sans-serif; text-align: center; vertical-align: middle; }
 .form { gap: 12px; }
 .chips button { min-height: var(--touch); }
 button.primary.big { min-height: calc(var(--touch) + 8px); font-size: 1.1rem; width: 100%; }
@@ -179,11 +180,11 @@ button.primary.big { min-height: calc(var(--touch) + 8px); font-size: 1.1rem; wi
 .requests { margin-bottom: 14px; border-color: var(--blue); }
 .req-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .req-head h2 { margin: 0; font-size: 1.2rem; }
-.requests .count { display: inline-block; min-width: 1.8em; padding: 0 8px; border-radius: 999px; background: var(--blue); color: #fff; font: 700 .9rem "Plus Jakarta Sans", sans-serif; text-align: center; }
-.reqcode { display: inline-block; padding: 2px 10px; border-radius: 8px; background: var(--navy); color: var(--ivory); font: 800 1.1rem "Plus Jakarta Sans", sans-serif; letter-spacing: .12em; font-variant-numeric: tabular-nums; }
+.requests .count { display: inline-block; min-width: 1.8em; padding: 0 8px; border-radius: 999px; background: var(--blue); color: #fff; font: 700 .9rem "Gate Sans", sans-serif; text-align: center; }
+.reqcode { display: inline-block; padding: 2px 10px; border-radius: 8px; background: var(--navy); color: var(--ivory); font: 800 1.1rem "Gate Sans", sans-serif; letter-spacing: .12em; font-variant-numeric: tabular-nums; }
 .guest { max-width: 520px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 12px; }
 .guest .card { display: grid; }
-.guest-code { margin: 8px 0; padding: 18px; text-align: center; border-radius: 16px; background: var(--navy); color: var(--ivory); font: 800 3.2rem "Plus Jakarta Sans", sans-serif; letter-spacing: .22em; font-variant-numeric: tabular-nums; }
+.guest-code { margin: 8px 0; padding: 18px; text-align: center; border-radius: 16px; background: var(--navy); color: var(--ivory); font: 800 3.2rem "Gate Sans", sans-serif; letter-spacing: .22em; font-variant-numeric: tabular-nums; }
 .check { display: flex; gap: 10px; align-items: flex-start; font-size: .85rem; font-weight: 600; min-height: 44px; }
 .check input { width: 24px; height: 24px; min-height: 0; margin-top: 2px; flex-shrink: 0; }
 .captcha { min-height: 0; }
@@ -215,7 +216,7 @@ button.primary.big { min-height: calc(var(--touch) + 8px); font-size: 1.1rem; wi
 .gtk-form, .gtk-admin { flex-basis: 100%; display: grid; gap: 10px; }
 .gtk-admin { display: flex; }
 .gtk-add { margin-top: 18px; display: grid; gap: 10px; border-top: 2px solid var(--line); padding-top: 14px; }
-.gtk-add h3 { margin: 0; font-family: "Playfair Display", Georgia, serif; }
+.gtk-add h3 { margin: 0; font-family: Georgia, "Times New Roman", serif; }
 .scanner { display: grid; gap: 10px; padding: 12px; margin: 8px 0; border: 2px solid var(--blue); border-radius: 14px; background: #fff; }
 .scanner video { width: 100%; max-height: 52vh; border-radius: 10px; background: #000; object-fit: cover; }
 @media print {

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "astro dev --host 127.0.0.1 --port 4341",
-    "build": "astro build",
+    "build": "astro build && node scripts/write-csp.mjs",
     "android:sync": "npm run build && cap sync android",
     "android:bundle:release": "node scripts/android-release.mjs",
     "preview": "astro preview --host 127.0.0.1 --port 4342",

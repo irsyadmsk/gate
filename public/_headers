@@ -1,8 +1,12 @@
 # Header keamanan gate.irsyads.com (Worker Static Assets).
 # Kamera hanya untuk pemindaian QR setelah petugas menekan Buka kamera.
+#
+# Content-Security-Policy memuat tiga penampung yang diisi scripts/write-csp.mjs setelah `astro build`:
+# hash skrip dan gaya inline, serta origin Supabase. Jangan menambahkan 'unsafe-inline' atau 'unsafe-eval'.
+# Turnstile (challenges.cloudflare.com) ditambahkan bersama formulir login dan pendaftaran tamu (bagian B3 dan C1).
 /*
   Strict-Transport-Security: max-age=31536000
-  Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' {{script-hashes}}; style-src 'self' {{style-hashes}}; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' {{supabase-origin}}; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
   Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()
   X-Content-Type-Options: nosniff
   X-Robots-Tag: noindex, nofollow
