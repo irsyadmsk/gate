@@ -110,6 +110,8 @@ Urutan kerja: **A → (B dan C) → D**. B dan C boleh paralel di Folder UJI yan
 - **Web:** login dengan formulir di Gate langsung membuka ruang kerja; `id.irsyads.com` di tab lain sudah dalam keadaan masuk, dan sebaliknya; tombol ID bekerja; permintaan tanpa token Turnstile ditolak; galat salah sandi seragam untuk akun ada maupun tidak ada.
 - **Android:** login formulir → satu tindakan Gate tercatat → aplikasi ditutup dan dibuka, sesi tetap → logout mencabut sesi. Akun tanpa peran dan sesi yang dicabut ditolak server. Tidak ada token di penyimpanan selain Keystore.
 
+**Status 16 Nov 2026:** C1, C2, C3, C5, dan C6 selesai di `main` lokal (belum di-push, belum dideploy). `npm test` 153/153 lulus. Diuji di browser (server dev, kunci uji Turnstile resmi Cloudflare, jaringan Supabase di-stub): email dirapikan, token CAPTCHA terkirim pada tiap percobaan, galat seragam, jeda 5 detik dan sandi dikosongkan setelah gagal ke-3, masuk berhasil menyimpan sesi tanpa kata sandi dan membuka ruang kerja, keluar memakai `keluarSesiAman` dan kembali ke layar masuk. Halaman persetujuan dan callback OAuth dihapus; `android-oauth.ts` dan tesnya dipertahankan tanpa terhubung ke UI (K7). Build rilis tidak lagi butuh client OAuth, host App Link, atau intent-filter App Link. **Belum teruji:** login di aplikasi Android (Turnstile di WebView `https://localhost`, penyimpanan Keystore, refresh token) dan login nyata ke Supabase dengan CAPTCHA produksi, karena butuh perangkat dan akun uji. C4 (inventaris akun tanpa sandi) tertunda karena butuh data produksi. Keluar di web mengikuti kontrak bersama Irsyads: sesi dicabut di server dan ditandai tidak berlaku secara logis, sehingga token mentah tetap ada di penyimpanan sampai kedaluwarsa.
+
 ### D. Siap Google Play
 
 | Langkah | Perbaikan |
@@ -142,7 +144,7 @@ Tiap baris butuh konfirmasi pemilik sebelum dilakukan.
 | K4 | Akses reviewer Play: (a) mode demo di aplikasi dengan data sintetis lokal, (b) proyek uji terpisah, (c) tenant demo di produksi. | (a), berupa tombol "Coba mode demo" di layar masuk. Data Gate satu-tenant, jadi (c) berisiko. |
 | K5 | Lisensi repo: MIT, Apache-2.0, AGPL-3.0, atau tanpa lisensi. | Putuskan sebelum repo diumumkan. |
 | K6 | Konfirmasi paket `com.irsyads.gate`, pemilik akun Play, dan pemegang upload key. | — |
-| K7 | Nasib kode OAuth Android (`android-oauth.ts` dan tesnya) selama fase 2 belum dimulai. | Simpan tanpa terhubung ke UI selama satu siklus rilis; hapus bila fase 2 tidak dimulai. |
+| K7 | Nasib kode OAuth Android (`android-oauth.ts` dan tesnya) selama fase 2 belum dimulai. | Dilaksanakan 16 Nov 2026: disimpan tanpa terhubung ke UI; halaman persetujuan dan callback dihapus. Hapus juga bila fase 2 tidak dimulai dalam satu siklus rilis. |
 | K8 | Google di formulir Gate: tombol memakai redirect ke ID (Google "langsung" hanya terdaftar untuk `id.irsyads.com`), atau `signInWithOAuth` dari Gate (butuh redirect URL Gate di Supabase dan Google). | Lewat ID. Tidak ada perubahan konfigurasi Google atau Supabase. |
 
 ## 7. Yang tidak dilakukan tanpa konfirmasi

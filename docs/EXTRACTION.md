@@ -20,7 +20,7 @@ Gate menjadi repositori tersendiri di `irsyadmsk/gate`, dengan aplikasi Astro di
 
 Studio menyimpan modul UI, adapter native, dan tipe HTTP yang dibutuhkannya sendiri. Build produksi Studio tidak mengimpor direktori aplikasi Gate. Tes HTTP aplikasi Gate dipindahkan ke repositori ini; skrip pratinjau integrasi manual di monorepo membutuhkan checkout Gate sebagai folder saudara.
 
-Adapter `auth`, `klien`, `sesi`, `pantau-sesi`, `preferences-account`, `proyek`, dan `captcha` disalin dengan kontrak yang sama. Perubahan keamanan sesi/identitas di Irsyads harus ditinjau juga di sini. Tidak ada dependensi file atau symlink menuju checkout Irsyads.
+Adapter `auth`, `klien`, `sesi`, `pantau-sesi`, `preferences-account`, `proyek`, `captcha`, serta `keluar`, `keluar-terikat`, dan `hasil-keluar` (kontrak keluar akun, disalin byte-identik dari `packages/supabase/src` Irsyads pada 16 November 2026) disalin dengan kontrak yang sama. Perubahan keamanan sesi/identitas di Irsyads harus ditinjau juga di sini. Tidak ada dependensi file atau symlink menuju checkout Irsyads.
 
 ## Pemulihan
 

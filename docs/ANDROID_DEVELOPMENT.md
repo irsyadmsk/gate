@@ -1,6 +1,6 @@
 # Menguji Gate pada Android
 
-Varian `fixture` memakai paket `com.irsyads.gate.fixture` dan menampilkan nama **Irsyads Gate Uji**. Server fixture lokal menyediakan akun dan data sintetis. HTTP dibatasi ke loopback Android pada varian ini. Varian `release` ditahan di Gradle sampai pertukaran sesi Irsyads ID untuk aplikasi Android tersedia.
+Varian `fixture` memakai paket `com.irsyads.gate.fixture` dan menampilkan nama **Irsyads Gate Uji**. Server fixture lokal menyediakan akun dan data sintetis. HTTP dibatasi ke loopback Android pada varian ini. Varian `release` hanya aktif lewat `npm run android:bundle:release` (butuh upload keystore di luar repo).
 
 ## Build dan pasang
 
@@ -41,16 +41,17 @@ Masuk dengan akun `satpam` atau `admin` dan sandi fixture yang tertera di layar 
 - Putuskan USB sesaat setelah tindakan dikirim. Setelah tersambung, periksa catatan sebelum mengulang tindakan.
 - Uji ulang login dan logout fixture, orientasi layar, navigasi sistem, ekspor dan pencetakan. Catat perbedaan perilaku terhadap web.
 
-## Pekerjaan sebelum release
+## Login dan pekerjaan sebelum release
 
-APK `debug` memakai paket `com.irsyads.gate.debug` dan aset lokal. Gate membuka browser sistem, menerima kode pada Android App Link, menukarkannya dengan PKCE S256, lalu memakai token untuk `gate-console`. Sesi disimpan dalam penyimpanan privat yang dienkripsi dengan kunci Android Keystore. Browser web Gate tetap memakai sesi cookie Irsyads ID. Test `tests/gate-android-oauth.test.mjs` menjalankan protokol dengan layanan identitas simulasi.
+Login Android memakai formulir di aplikasi (email, sandi, Turnstile). `src/lib/android-session.ts` memanggil Supabase Auth langsung lewat CapacitorHttp (`grant_type=password`, lalu `refresh_token`) dan menyimpan sesi terenkripsi lewat plugin `GateSession` (Android Keystore). Kata sandi tidak disimpan, supabase-js tidak dipakai, dan token tidak pernah ada di `localStorage`. Keluar akun selalu menghapus sesi perangkat dan berkas ekspor sementara, lalu mencoba mencabut sesi di server. Widget Turnstile berjalan di WebView dengan origin `https://localhost`, yang diizinkan widget produksi. Tombol Irsyads ID tidak ditampilkan di Android.
 
-1. Di proyek Supabase uji terisolasi, daftarkan public OAuth client khusus Gate dengan `token_endpoint_auth_method=none`. Untuk build web staging, gunakan origin Gate staging sebagai Auth Site URL, `/android/auth/consent` sebagai Authorization Path, dan isi `PUBLIC_GATE_ANDROID_CONSENT_LOGIN_URL` dengan portal ID staging yang memakai proyek Supabase yang sama. Portal ID staging harus menerima URL kembali ke Gate staging dan membagikan sesi browser dengannya. Tanpa variabel login, halaman persetujuan tidak aktif. Gunakan akun, peran, dan data Gate sintetis. Token OAuth Supabase membawa izin yang sepadan dengan sesi biasa. Sebelum mengaktifkan pada proyek bersama, audit akses data dan kebijakan lintas aplikasi berdasarkan `client_id`. [Konfigurasi OAuth server](https://supabase.com/docs/guides/auth/oauth-server/getting-started) · [Keamanan token](https://supabase.com/docs/guides/auth/oauth-server/token-security)
-2. Tetapkan host HTTPS staging milik Irsyads dan daftarkan callback `https://<host-staging>/android/auth/callback` secara persis pada OAuth client. Publikasikan `/.well-known/assetlinks.json` dengan paket `com.irsyads.gate.debug` dan sidik jari SHA-256 sertifikat debug komputer penguji. Untuk kandidat Play nanti gunakan paket rilis dan sertifikat Play App Signing. [Android App Links](https://developer.android.com/training/app-links/configure-assetlinks)
-3. Set `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` (kunci publishable), `PUBLIC_GATE_ANDROID_OAUTH_CLIENT_ID`, dan `PUBLIC_GATE_ANDROID_APP_LINK_HOST` di **satu sesi terminal**. Isi host dengan nama domain huruf kecil, tanpa skema, port, atau path. Variabel host perlu terbaca oleh Astro dan Gradle agar callback cocok. Jalankan `npm run android:sync`, lalu `:app:assembleDebug` dari `android/`. APK berada di `android/app/build/outputs/apk/debug/app-debug.apk`.
-4. Uji domain App Link, login dari browser, callback saat aplikasi ditutup dan sedang terbuka, pencabutan sesi atau peran, dan penolakan akun tanpa peran. Uji login serta satu tindakan Gate dengan akun Satpam uji. Logout menghapus sesi lokal dan mencoba mencabut sesi Android di server, sehingga cabut sesi server juga perlu diperiksa saat jaringan putus atau token sudah kedaluwarsa.
+Build rilis: set `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` (kunci publishable), dan `PUBLIC_GATE_ORIGIN` (origin HTTPS), lalu jalankan `npm run android:bundle:release` dengan variabel upload keystore (`GATE_ANDROID_UPLOAD_*`). Build debug dan fixture: `npm run android:sync`, lalu `:app:assembleDebug` atau `:app:assembleFixture` dari `android/`.
 
-Build `release` ditahan sampai sambungan Irsyads ID dan Gate lulus uji. Berikutnya verifikasi perangkat pos, penandatanganan oleh penerbit, dan track pengujian Play Console.
+Uji di perangkat sebelum rilis: widget Turnstile termuat di WebView; login dengan akun uji Satpam; satu tindakan Gate; tutup dan buka aplikasi (sesi tetap); token kedaluwarsa diperbarui; keluar menghapus sesi; akun tanpa peran ditolak server; sesi yang dicabut ditolak.
+
+### Fase 2: login lewat browser (OAuth), ditunda
+
+`src/lib/android-oauth.ts` (PKCE S256 dengan callback Android App Link) dan tesnya dipertahankan tanpa terhubung ke UI. Hanya dikerjakan bila ada kebutuhan nyata, mis. akun yang hanya punya login Google. Syaratnya: halaman persetujuan OAuth dipindah ke host Site URL proyek bersama (UI otorisasi Supabase adalah Site URL + Authorization Path, satu per proyek), audit RLS dan RPC semua aplikasi terhadap klaim `client_id` sebelum OAuth server diaktifkan, klien publik `token_endpoint_auth_method=none` dengan redirect URI persis, `public/.well-known/assetlinks.json` berisi sidik jari Play App Signing, dan intent-filter App Link (`android/app/src/appLinks/`, kini hanya untuk build debug) dipasang kembali pada rilis. Bagian di bawah mencatat uji sebelumnya.
 
 ## Ekspor dan cetak
 
@@ -58,11 +59,11 @@ WebView tidak menangani unduhan blob maupun `window.print()`, jadi aplikasi mema
 
 Uji di perangkat: ekspor tiap format dan buka di aplikasi tujuan; cetak kartu dan simpan sebagai PDF; keluar akun lalu pastikan `cache/exports/` kosong. Sampai saat ini plugin baru teruji sampai kompilasi dan paket APK fixture.
 
-## Bukti uji Supabase lokal
+## Bukti uji Supabase lokal (OAuth, fase 2)
 
 Stack Docker terpisah menguji OAuth PKCE dengan penyedia Supabase Auth dan Postgres lokal. Akun sintetis memberi persetujuan atau menolak melalui API Supabase. Token Satpam membuka snapshot dan mencatat pergerakan GTK melalui handler Gate serta RPC yang ada. Pengulangan perintah terdeteksi, akun tanpa peran ditolak, dan sesi Android yang dicabut ditolak Gate. Sesi web tetap berlaku setelah logout Android. Harness lokal menjalankan handler dalam Node dengan adapter konfigurasi Deno. Uji ini mencakup protokol dan backend dengan akun sintetis. Uji portal Irsyads ID staging, verifikasi domain App Link dan penggunaan di perangkat masih terpisah.
 
-## Domain uji Android
+## Domain uji Android (App Link, fase 2)
 
 Pada 6 November 2026, Worker statis `gate-uat` dipasang pada [gate-uat.irsyads.com](https://gate-uat.irsyads.com). Worker itu memuat halaman informasi, halaman kembali ke aplikasi, dan [assetlinks.json](https://gate-uat.irsyads.com/.well-known/assetlinks.json). File JSON dilayani lewat HTTPS tanpa redirect dan cocok dengan paket serta sertifikat APK debug. Pemeriksaan Google Digital Asset Links mengembalikan `linked: true`.
 

@@ -18,7 +18,7 @@ Buka http://127.0.0.1:4341. `npm run build` menghasilkan dist/; `npm run preview
 ## Batas layanan
 
 - Frontend, inti aturan Gate, tes, dan sumber Edge Functions Gate berada di repositori ini.
-- Login tetap melalui Irsyads ID. Sesi, profil akun, RBAC, dan database Supabase masih memakai layanan Irsyads yang sudah ada. Pemisahan repositori tidak membuat proyek database atau akun baru.
+- Login memakai akun Irsyads ID: formulir di Gate (web dan Android) atau, di web, tombol "Masuk dengan Irsyads ID". Sesi web memakai cookie `*.irsyads.com` yang sama dengan `id.irsyads.com`. Pendaftaran dan pemulihan sandi tetap di Irsyads ID. Sesi, profil akun, RBAC, dan database Supabase masih memakai layanan Irsyads yang sudah ada. Pemisahan repositori tidak membuat proyek database atau akun baru.
 - Kandidat ruang admin dan satpam kini tersedia langsung di Gate: GTK/kartu, status petugas, laporan, dan serah terima. Panel Studio lama tetap menjadi integrasi kompatibilitas; kandidat ini belum dirilis ke produksi. Lihat docs/2026-10-29_WORKSPACES_LOCAL.md.
 - Domain layanan yang sudah ada: https://gate.irsyads.com. Pemisahan ini tidak men-deploy ulang layanan atau mengubah database/DNS.
 

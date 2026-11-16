@@ -37,7 +37,7 @@ Sumber grafis dapat dibuka di browser. Gunakan tampilan 1024 × 500 untuk featur
 
 Teks berikut dipakai setelah akun demo, tautan QR sintetis, dan label navigasi diperiksa dari instalasi Play. Simpan kredensial di bagian App access dalam Play Console.
 
-> Irsyads Gate requires an assigned Irsyads ID account. Tap **Masuk melalui Irsyads ID**, sign in with the supplied demo credentials, then return to Gate. The demo environment contains synthetic school records. Use the guard account to open **GTK** for staff movement, **Pindai** for card checks, and **Jaga** for duty handover. Use the administrator account to inspect **GTK & akun** and **Status satpam**. Use the supplied sample QR link or type the provided sample card code. Sign out using **Lainnya → Keluar akun** before changing accounts.
+> Irsyads Gate requires an account assigned by the school administrator. On the sign-in screen, enter the supplied demo email and password and tap **Masuk**. The demo environment contains synthetic school records. Use the guard account to open **GTK** for staff movement, **Pindai** for card checks, and **Jaga** for duty handover. Use the administrator account to inspect **GTK & akun** and **Status satpam**. Use the supplied sample QR link or type the provided sample card code. Sign out using **Lainnya → Keluar akun** before changing accounts.
 
 Verifikasi akses demo Satpam, admin, GTK, pengasuh/piket, dan penerima tamu sesuai fitur pada AAB. Akun dan kode harus dapat dipakai berulang kali oleh reviewer dari lokasi mereka. Tautan contoh perlu memakai QR staging yang tidak memberi akses ke data sekolah. [Syarat akses reviewer](https://support.google.com/googleplay/android-developer/answer/15748846)
 
