@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { ANDROID_CALLBACK, createAndroidOAuth } from '../src/lib/android-oauth.ts';
-import { gateConsentRequest, gateConsentReturn, matchesGateAuthorization } from '../src/lib/android-consent.ts';
 
 function fixture() {
   let value = null, url, now = 1000;
@@ -104,22 +103,4 @@ test('Android OAuth menyimpan sesi saat gangguan sementara dan membuang refresh 
   const revoked = createAndroidOAuth({ ...f.options, token: async () => ({ status: 400, data: { error: 'invalid_grant' } }) });
   assert.equal(await revoked.getAccessToken(), null);
   assert.equal(await f.options.read(), null);
-});
-
-test('persetujuan staging mengikat akun dan klien serta hanya mengembalikan kode atau penolakan ke App Link', () => {
-  const callback = new URL(ANDROID_CALLBACK);
-  const request = { id: 'request-001', clientId: 'gate-client', userId: 'guard-1', callback };
-  const details = { authorization_id: request.id, client: { id: request.clientId }, user: { id: request.userId }, redirect_uri: callback.href };
-  assert.equal(gateConsentRequest('?authorization_id=request-001'), request.id);
-  assert.equal(gateConsentRequest('?authorization_id=x&authorization_id=y'), null);
-  assert.equal(gateConsentRequest('?authorization_id=..%2Fx'), null);
-  assert.ok(matchesGateAuthorization(details, request));
-  assert.equal(matchesGateAuthorization({ ...details, client: { id: 'other' } }, request), false);
-  assert.equal(matchesGateAuthorization({ ...details, user: { id: 'other' } }, request), false);
-  assert.equal(matchesGateAuthorization({ ...details, redirect_uri: `${callback.href}?extra=1` }, request), false);
-  assert.equal(gateConsentReturn('https://other.test/android/auth/callback?state=x&code=y', callback), null);
-  assert.equal(gateConsentReturn(`${callback.href}?state=x&code=y&code=z`, callback), null);
-  assert.equal(gateConsentReturn(`${callback.href}?state=x&code=y#access_token=z`, callback), null);
-  assert.equal(gateConsentReturn(`${callback.href}?state=x&code=y&extra=discard`, callback), `${callback.href}?state=x&code=y`);
-  assert.equal(gateConsentReturn(`${callback.href}?state=x&error=access_denied`, callback), `${callback.href}?state=x&error=access_denied`);
 });

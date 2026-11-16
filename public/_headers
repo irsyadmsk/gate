@@ -3,7 +3,7 @@
 #
 # Content-Security-Policy memuat tiga penampung yang diisi scripts/write-csp.mjs setelah `astro build`:
 # hash skrip dan gaya inline, serta origin Supabase. Jangan menambahkan 'unsafe-inline' atau 'unsafe-eval'.
-# challenges.cloudflare.com hanya untuk widget Turnstile (pendaftaran tamu; formulir login pada bagian C1).
+# challenges.cloudflare.com hanya untuk widget Turnstile (formulir login dan pendaftaran tamu).
 /*
   Strict-Transport-Security: max-age=31536000
   Content-Security-Policy: default-src 'self'; script-src 'self' {{script-hashes}} https://challenges.cloudflare.com; style-src 'self' {{style-hashes}}; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' {{supabase-origin}}; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
@@ -15,5 +15,3 @@
 https://:project.workers.dev/*
   X-Robots-Tag: noindex
 
-/android/auth/*
-  Cache-Control: no-store

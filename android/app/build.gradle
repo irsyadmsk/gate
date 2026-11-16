@@ -25,8 +25,8 @@ android {
         }
     }
     sourceSets {
+        // Callback App Link hanya dibutuhkan login OAuth (fase 2); versi rilis memakai formulir login di aplikasi.
         debug.manifest.srcFile 'src/appLinks/AndroidManifest.xml'
-        release.manifest.srcFile 'src/appLinks/AndroidManifest.xml'
     }
     signingConfigs {
         if (gateReleaseEnabled) {

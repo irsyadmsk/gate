@@ -2,10 +2,16 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@irsyads/supabase/klien';
 import { urlMasukId } from '@irsyads/supabase/auth';
 import { nativeBoardingService } from '../../lib/boarding-native';
+import { loginErrorMessage, lupaSandiUrl } from '../../lib/login-form';
 import GateConsole from './GateConsole';
-import { Icon } from './ui';
-import '../../styles/console.css';
+import LoginScreen from './LoginScreen';
 
+async function signIn(email: string, password: string, captchaToken: string) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken } });
+  return error ? { message: loginErrorMessage(error) } : null;
+}
+
+/** Web: sesi memakai cookie *.irsyads.com yang sama dengan id.irsyads.com, jadi masuk di sini berlaku juga di sana dan sebaliknya. */
 export default function NativeGateRoot() {
   const [sessionId, setSessionId] = useState<string | null | undefined>(undefined);
   useEffect(() => {
@@ -16,6 +22,6 @@ export default function NativeGateRoot() {
     return () => { live = false; data.subscription.unsubscribe(); };
   }, []);
   if (sessionId) return <GateConsole key={sessionId} service={nativeBoardingService} signedOut={() => setSessionId(null)} />;
-  const session = sessionId === undefined ? 'loading' : 'out';
-  return <div className="gc"><main className="gc-public"><div className="gc-brand"><span className="gc-brandmark"><Icon name="shield" /></span><div><strong>Gate</strong><small>AKSES & KEAMANAN</small></div></div><div className="gc-empty"><p className="gc-kicker">IRSYADS GATE</p><h1>{session === 'loading' ? 'Memeriksa sesi…' : 'Selamat datang di Gate.'}</h1><p>Satpam mencatat pergerakan. GTK membuka kartu pribadi. Pengasuh memeriksa izin sesuai asrama.</p></div>{session === 'out' && <div className="gc-stack"><a className="gc-button gc-primary gc-full" href={urlMasukId(window.location.href, 'id')}>Masuk melalui Irsyads ID<Icon name="arrow" /></a><a className="gc-button gc-full" href="/tamu">Saya datang sebagai tamu</a></div>}<p className="gc-muted" style={{ marginTop: 24 }}>Akun dan peran pengguna dikelola di <a href="https://id.irsyads.com/" rel="noopener noreferrer">Irsyads ID</a>.</p></main></div>;
+  return <LoginScreen checking={sessionId === undefined} signIn={signIn} idLoginUrl={urlMasukId(window.location.href, 'id')}
+    recoveryUrl={lupaSandiUrl(window.location.origin + '/', import.meta.env.DEV)} guestHref="/tamu" />;
 }

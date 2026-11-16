@@ -1,4 +1,5 @@
 import { supabase } from '@irsyads/supabase/klien';
+import { keluarSesiAman } from '@irsyads/supabase/keluar';
 import { ALAMAT_SUPABASE, KUNCI_PUBLIK_SUPABASE } from '@irsyads/supabase/proyek';
 import { createConsoleService, GateHttpError, type GuestService } from './boarding-http';
 
@@ -14,8 +15,10 @@ async function nativeRequest<T>(op: string, data: Record<string, unknown> = {}, 
   if (!response.ok) throw new GateHttpError(result.error || result.message || 'Layanan Gate belum dapat dihubungi.', response.status);
   return result as T;
 }
+// Keluar memakai kontrak bersama Irsyads ID: token yang sama dicabut di server dan sesi lokal ditandai dicabut, tanpa menghapus sesi akun lain.
 export const nativeBoardingService = createConsoleService(nativeRequest, async () => {
-  const result = await supabase.auth.signOut({ scope: 'local' });
+  const { data } = await supabase.auth.getSession();
+  const result = await keluarSesiAman({ scope: 'local', expectedOwner: data.session?.user.id });
   if (result.error) throw result.error;
 });
 export const nativeGuestService: GuestService = {
