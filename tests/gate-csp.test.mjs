@@ -25,7 +25,8 @@ test('penangan inline, atribut style, dan javascript: ditandai; isi skrip tidak'
 test('kebijakan terisi lengkap, ketat, dan tanpa penampung tersisa', () => {
   const output = buildHeaders(template, { scripts: new Set([hash('a'), hash('b')]), styles: new Set([hash('c')]), supabase: 'https://abc.supabase.co' });
   const line = policy(output);
-  assert.match(line, /script-src 'self' 'sha256-[^']+' 'sha256-[^']+';/);
+  assert.match(line, /script-src 'self' 'sha256-[^']+' 'sha256-[^']+' https:\/\/challenges\.cloudflare\.com;/);
+  assert.match(line, /frame-src https:\/\/challenges\.cloudflare\.com;/);
   assert.match(line, /style-src 'self' 'sha256-[^']+';/);
   assert.match(line, /connect-src 'self' https:\/\/abc\.supabase\.co;/);
   assert.match(line, /frame-ancestors 'none'/);
@@ -38,7 +39,7 @@ test('kebijakan terisi lengkap, ketat, dan tanpa penampung tersisa', () => {
 
 test('tanpa hash gaya, style-src tetap rapi', () => {
   const line = policy(buildHeaders(template, { scripts: new Set(), styles: new Set(), supabase: 'https://abc.supabase.co' }));
-  assert.match(line, /script-src 'self'; style-src 'self'; img-src/);
+  assert.match(line, /script-src 'self' https:\/\/challenges\.cloudflare\.com; style-src 'self'; img-src/);
 });
 
 test('template tanpa CSP atau dengan unsafe-inline ditolak', () => {

@@ -2,4 +2,6 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Dipakai Capacitor (BridgeWebChromeClient) untuk foto kejadian dari input capture. Jangan dihapus. -->
     <external-files-path name="captured_images" path="Pictures/" />
+    <!-- Berkas ekspor sementara yang dibagikan GateFilesPlugin; hanya subfolder ini yang dapat dibuka aplikasi lain. -->
+    <cache-path name="gate_exports" path="exports/" />
 </paths>

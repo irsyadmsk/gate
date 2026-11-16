@@ -20,7 +20,7 @@ export const nativeBoardingService = createConsoleService(nativeRequest, async (
 });
 export const nativeGuestService: GuestService = {
   options: () => nativeRequest('options', {}, true),
-  register: (input, reference, secret) => nativeRequest('register', { input, reference, secret }, true),
+  register: (input, reference, secret, captchaToken) => nativeRequest('register', { input, reference, secret, captchaToken }, true),
   status: (secret) => nativeRequest('status', { secret }, true),
   cancel: (secret) => nativeRequest('cancel', { secret }, true),
 };

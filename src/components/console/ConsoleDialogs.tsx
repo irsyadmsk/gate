@@ -1,8 +1,9 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { canExitStudent, hasRole, personPresence, HANDOVER_CHECKS, ENTRY_LABELS, PERMIT_LABELS, VISIT_LABELS, type BoardingSnapshot, type GatePerson, type EntryKind } from "@irsyads/gate-core";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { canExitStudent, hasRole, personPresence, HANDOVER_CHECKS, ENTRY_LABELS, PERMIT_LABELS, VISIT_LABELS, previewPeopleCsv, IMPORT_TEMPLATE, MAX_IMPORT_ROWS, type BoardingSnapshot, type GatePerson, type EntryKind } from "@irsyads/gate-core";
 import { Check, Field, Icon, Modal, QrImage, Tag, cardToken, fromWib, fullWib, initials, inputWib, newReference } from "./ui";
+import { saveFile } from "../../lib/device-files";
 
-export interface ConsoleDialog { type: "person" | "permit" | "decision" | "card" | "visit" | "handover" | "entry" | "resolve" | "person-edit" | "duty" | "replace" | "settings" | "correct"; id?: string; extra?: string }
+export interface ConsoleDialog { type: "person" | "permit" | "decision" | "card" | "visit" | "handover" | "entry" | "resolve" | "person-edit" | "duty" | "replace" | "settings" | "correct" | "people-import" | "visit-create"; id?: string; extra?: string }
 export type Execute = (type: string, data: Record<string, unknown>) => Promise<boolean>;
 export default function ConsoleDialogs({ dialog, snapshot: s, execute, busy, error, close, printCards }: { dialog: ConsoleDialog; snapshot: BoardingSnapshot; execute: Execute; busy: boolean; error: string; close: () => void; printCards:(ids:string[])=>void }) {
   const person = s.people.find((p) => p.id === dialog.id);
@@ -14,6 +15,12 @@ export default function ConsoleDialogs({ dialog, snapshot: s, execute, busy, err
   const [selectedPermit, setSelectedPermit] = useState(""), [copyMessage, setCopyMessage] = useState("");
   const [entryKind, setEntryKind] = useState<EntryKind>((dialog.extra as EntryKind) || "incident");
   const [kind, setKind] = useState<GatePerson["kind"]>(person?.kind ?? (dialog.extra === "staff" ? "staff" : "student"));
+  // Impor CSV: token kartu dibuat sekali per berkas supaya pengulangan setelah respons hilang memakai data yang sama.
+  const [csvText, setCsvText] = useState(""), [csvName, setCsvName] = useState(""), [csvError, setCsvError] = useState("");
+  const preview = useMemo(() => previewPeopleCsv(csvText, s.people.map((p) => p.number)), [csvText, s.people]);
+  const importRows = useMemo(() => preview.rows.map((row) => ({ ...row, token: cardToken(row.kind) })), [preview]);
+  // Rahasia pendaftaran tamu jalan-masuk: tetap selama dialog terbuka agar pengiriman ulang tidak membuat pendaftaran ganda.
+  const [guestSecret] = useState(() => Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, "0")).join(""));
   const guard = hasRole(s.actor, "guard", "admin"), admin = hasRole(s.actor, "admin"), approver = hasRole(s.actor, "approver");
   const now = new Date(s.serverAt), future = new Date(now.getTime() + 120 * 60000);
   const gateField = <Field label="Pos pencatatan"><select name="gate">{s.settings.gates.map((g) => <option key={g}>{g}</option>)}</select></Field>;
@@ -22,7 +29,7 @@ export default function ConsoleDialogs({ dialog, snapshot: s, execute, busy, err
   const actions = (label: string) => <div className="gc-form-actions"><button type="button" onClick={close} disabled={busy}>Batal</button><button type="submit" className="gc-primary" disabled={busy}>{busy ? "Menyimpan…" : label}<Icon name="check" size={18} /></button></div>;
   const form = (handler: (f: FormData) => void | Promise<void>, children: React.ReactNode) => <form onSubmit={(e: FormEvent<HTMLFormElement>) => { e.preventDefault(); if (!busy) void handler(new FormData(e.currentTarget)); }}>{children}</form>;
   const subtitle = "Waktu dicatat dalam WIB · periksa data sebelum menyimpan";
-  const title = ({ person: "Pemeriksaan identitas", permit: "Ajukan izin murid", decision: "Tinjau permohonan izin", card: "Kartu akses", visit: "Pemeriksaan kunjungan", handover: "Serah terima jaga", entry: "Catatan jaga baru", resolve: "Selesaikan tindak lanjut", "person-edit": person ? "Ubah identitas" : "Tambah identitas", duty: "Jadwal jaga baru", replace: "Ganti petugas shift", settings: "Pengaturan Gate", correct: "Koreksi catatan" })[dialog.type];
+  const title = ({ person: "Pemeriksaan identitas", permit: "Ajukan izin murid", decision: "Tinjau permohonan izin", card: "Kartu akses", visit: "Pemeriksaan kunjungan", handover: "Serah terima jaga", entry: "Catatan jaga baru", resolve: "Selesaikan tindak lanjut", "person-edit": person ? "Ubah identitas" : "Tambah identitas", duty: "Jadwal jaga baru", replace: "Ganti petugas shift", settings: "Pengaturan Gate", correct: "Koreksi catatan", "people-import": "Impor identitas dari CSV", "visit-create": "Daftarkan tamu" })[dialog.type];
   useEffect(() => { if (person) setKind(person.kind); }, [person?.id]);
   let content: React.ReactNode;
 
@@ -111,6 +118,40 @@ export default function ConsoleDialogs({ dialog, snapshot: s, execute, busy, err
     content = form((f) => send("duty.replace", { dutyId: duty.id, toId: text(f, "toId"), note: text(f, "note") }), <><h3>{duty.label}</h3><Field label="Petugas pengganti"><select name="toId" required><option value="">Pilih pengganti</option>{s.directory.filter((a) => a.roles.includes("guard")).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></Field><Field label="Alasan penggantian"><textarea name="note" required maxLength={160} /></Field>{actions("Simpan penggantian")}</>);
   } else if (dialog.type === "settings") {
     content = form((f) => send("settings.save", { siteName: text(f, "siteName"), guestRetentionDays: Number(f.get("days")), maxVisitHours: Number(f.get("hours")) }), <><Field label="Nama lembaga"><input name="siteName" required defaultValue={s.settings.siteName} maxLength={100} /></Field><div className="gc-grid"><Field label="Masa simpan kunjungan selesai (hari)"><input type="number" name="days" min={30} max={365} defaultValue={s.settings.guestRetentionDays} required /></Field><Field label="Peringatan lama kunjungan (jam)"><input type="number" name="hours" min={1} max={24} defaultValue={s.settings.maxVisitHours} required /></Field></div><p className="gc-muted">Perubahan masa simpan berlaku pada pemberitahuan tamu. Penghapusan catatan perlu ditinjau bersama kebutuhan audit dan tanggungan terbuka.</p>{actions("Simpan pengaturan")}</>);
+  } else if (dialog.type === "people-import" && admin) {
+    const students = importRows.filter((r) => r.kind === "student").length, staff = importRows.length - students;
+    const ready = !!csvText && !preview.issues.length && importRows.length > 0;
+    const readFile = async (file?: File) => {
+      setCsvError(""); setCsvText(""); setCsvName(file?.name ?? "");
+      if (!file) return;
+      if (file.size > 1_500_000) { setCsvError("Berkas terlalu besar. Bagi menjadi beberapa impor."); return; }
+      try { setCsvText(await file.text()); } catch { setCsvError("Berkas tidak dapat dibaca. Pilih berkas CSV lain."); }
+    };
+    content = <div className="gc-stack">
+      <p>Tambahkan murid dan GTK baru sekaligus. Seluruh baris harus benar; bila ada yang salah, tidak ada yang disimpan. Nomor yang sudah ada tidak diubah, dan kartu QR diterbitkan saat disimpan.</p>
+      <div className="gc-actions gc-no-print"><button type="button" onClick={() => void saveFile("templat-impor-identitas.csv", "text/csv;charset=utf-8", "\ufeff" + IMPORT_TEMPLATE).catch(() => setCsvError("Templat belum dapat disimpan."))}><Icon name="download" size={16} />Unduh templat CSV</button></div>
+      <Field label="Berkas CSV" hint={`Kolom: jenis (murid/gtk), nama, nomor, unit, asrama (murid), tempat_tinggal (GTK). Maksimal ${MAX_IMPORT_ROWS} baris.`}><input type="file" accept=".csv,text/csv,text/plain" onChange={(e) => { void readFile(e.target.files?.[0]); e.target.value = ""; }} /></Field>
+      {csvError && <div className="gc-callout gc-error" role="alert"><Icon name="info" /><p>{csvError}</p></div>}
+      {csvText && (preview.issues.length
+        ? <div className="gc-callout gc-error" role="alert"><Icon name="info" /><div><p><strong>{csvName}</strong>: {preview.issues.length} masalah. Perbaiki berkas lalu pilih ulang.</p><ul>{preview.issues.slice(0, 10).map((i) => <li key={`${i.line}-${i.message}`}>Baris {i.line}: {i.message}</li>)}</ul>{preview.issues.length > 10 && <p>…dan {preview.issues.length - 10} masalah lain.</p>}</div></div>
+        : <div className="gc-callout" role="status"><Icon name="check" /><p><strong>{csvName}</strong>: {importRows.length} baris siap diimpor ({students} murid, {staff} GTK).</p></div>)}
+      {ready && <div className="gc-table-scroll"><table className="gc-table"><thead><tr><th scope="col">Jenis</th><th scope="col">Nama</th><th scope="col">Nomor</th><th scope="col">Unit</th><th scope="col">Asrama</th></tr></thead><tbody>{importRows.slice(0, 8).map((r) => <tr key={r.number}><td data-label="Jenis">{r.kind === "student" ? "Murid" : "GTK"}</td><td data-label="Nama">{r.name}</td><td data-label="Nomor">{r.number}</td><td data-label="Unit">{r.unit}</td><td data-label="Asrama">{r.dorm || "—"}</td></tr>)}</tbody></table>{importRows.length > 8 && <p className="gc-muted">Menampilkan 8 dari {importRows.length} baris.</p>}</div>}
+      <div className="gc-form-actions"><button type="button" onClick={close} disabled={busy}>Batal</button><button type="button" className="gc-primary" disabled={busy || !ready} onClick={() => void send("person.import", { rows: importRows })}>{busy ? "Menyimpan…" : ready ? `Impor ${importRows.length} identitas` : "Impor identitas"}<Icon name="check" size={18} /></button></div>
+    </div>;
+  } else if (dialog.type === "visit-create" && guard) {
+    const hosts = s.settings.hosts.map((id) => ({ id, name: s.directory.find((a) => a.id === id)?.name ?? "Penerima" }));
+    content = hosts.length ? form((f) => send("visit.create", { name: text(f, "name"), category: text(f, "category"), origin: text(f, "origin"), phone: text(f, "phone"), host: text(f, "host"), purpose: text(f, "purpose"), plannedAt: fromWib(f.get("plannedAt")), vehicle: text(f, "vehicle"), groupSize: Number(f.get("groupSize")), note: text(f, "note"), informed: f.get("informed") === "on", secret: guestSecret }), <>
+      <Field label="Jenis kunjungan"><select name="category">{["Wali murid", "Jemput murid", "Tamu lembaga", "Vendor / teknisi"].map((v) => <option key={v}>{v}</option>)}</select></Field>
+      <Field label="Penerima / unit yang dituju"><select name="host" required defaultValue=""><option value="" disabled>Pilih penerima</option>{hosts.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}</select></Field>
+      <Field label="Keperluan kunjungan"><textarea name="purpose" required maxLength={160} /></Field>
+      <div className="gc-grid"><Field label="Nama lengkap tamu"><input name="name" required maxLength={80} autoComplete="off" /></Field><Field label="Asal / instansi / hubungan dengan murid"><input name="origin" required maxLength={100} /></Field></div>
+      <div className="gc-grid"><Field label="Nomor telepon (opsional)"><input name="phone" type="tel" inputMode="tel" maxLength={24} /></Field><Field label="Waktu tiba · WIB"><input name="plannedAt" type="datetime-local" required defaultValue={inputWib(now)} /></Field></div>
+      <div className="gc-grid"><Field label="Plat kendaraan (opsional)"><input name="vehicle" maxLength={20} /></Field><Field label="Jumlah orang, termasuk tamu"><input name="groupSize" type="number" min={1} max={20} required defaultValue={1} /></Field></div>
+      <Field label="Catatan (opsional)"><textarea name="note" maxLength={300} /></Field>
+      <div className="gc-callout"><Icon name="shield" /><p>Tamu tetap menunggu konfirmasi penerima (pengasuh/piket) sebelum bisa dicatat masuk. Untuk penjemputan murid, izin keluar harus sudah disetujui pengasuh.</p></div>
+      <Check name="informed" required label={`Tamu sudah saya beri tahu bahwa datanya dipakai untuk mengatur kunjungan dan disimpan ${s.settings.guestRetentionDays} hari setelah selesai.`} />
+      {actions("Daftarkan tamu")}
+    </>) : <div className="gc-callout gc-warning"><Icon name="info" /><p>Belum ada penerima kunjungan. Admin menetapkannya di GTK & akun, bagian Pengasuh / piket & penerima tamu.</p></div>;
   } else content = <p>Data tidak tersedia untuk akun ini. Tutup lalu muat ulang.</p>;
   return <Modal title={title} subtitle={subtitle} close={busy ? () => {} : close}>{error && <div className="gc-callout gc-error" role="alert" style={{ marginBottom: 16 }}><Icon name="info" />{error}</div>}{content}</Modal>;
 }

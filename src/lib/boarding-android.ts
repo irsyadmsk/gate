@@ -1,6 +1,7 @@
 import { CapacitorHttp, registerPlugin } from '@capacitor/core';
 import { createAndroidOAuth } from './android-oauth';
 import { createConsoleService, GateHttpError } from './boarding-http';
+import { clearTemporary } from './device-files';
 
 interface GateSessionPlugin {
   read(): Promise<{ value?: string }>;
@@ -44,6 +45,6 @@ export function createAndroidBoarding() {
       throw new GateHttpError(result?.error || result?.message || 'Layanan Gate belum dapat dihubungi.', response.status);
     }
     return result as T;
-  }, auth.logout);
+  }, async () => { await auth.logout(); await clearTemporary(); });
   return { auth, service };
 }

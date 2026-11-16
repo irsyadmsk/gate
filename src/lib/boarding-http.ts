@@ -43,13 +43,13 @@ export const localBoardingService: ConsoleService = {
 export interface GuestOptions { siteName: string; hosts: { id: string; name: string }[]; retentionDays: number }
 export interface GuestService {
   options(): Promise<GuestOptions>;
-  register(input: GuestRegistration, reference: string, secret: string): Promise<GuestReceipt>;
+  register(input: GuestRegistration, reference: string, secret: string, captchaToken?: string): Promise<GuestReceipt>;
   status(secret: string): Promise<GuestReceipt>;
   cancel(secret: string): Promise<GuestReceipt>;
 }
 export const localGuestService: GuestService = {
   options: () => localGateRequest("/api/guest-options"),
-  register: (input, reference, secret) => localGateRequest("/api/guest-register", { input, reference, secret }),
+  register: (input, reference, secret) => localGateRequest("/api/guest-register", { input, reference, secret }), // fixture loopback tidak memakai CAPTCHA
   status: (secret) => localGateRequest("/api/guest-status", { secret }),
   cancel: (secret) => localGateRequest("/api/guest-cancel", { secret }),
 };

@@ -1,9 +1,11 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { VISIT_LABELS, type GuestReceipt, type GuestRegistration as Registration } from "@irsyads/gate-core";
 import type { GuestOptions, GuestService } from "../../lib/boarding-http";
 import { Check, Field, Icon, QrImage, fromWib, fullWib, inputWib, newReference } from "./ui";
 
+/** Server menolak pendaftaran tanpa token Turnstile; fixture lokal (`local`) tidak memakainya. */
 export default function GuestRegistration({ service, local = false }: { service: GuestService; local?: boolean }) {
+  const captchaBox = useRef<HTMLDivElement>(null), captchaWidget = useRef<{ reset: () => void; hapus: () => void } | null>(null), [captcha, setCaptcha] = useState<string | null>(null);
   const [options, setOptions] = useState<GuestOptions | null>(null), [step, setStep] = useState(0), [error, setError] = useState("");
   const [busy, setBusy] = useState(false), [receipt, setReceipt] = useState<GuestReceipt | null>(null);
   const [form, setForm] = useState({ name: "", category: "Wali murid", origin: "", phone: "", host: "", purpose: "", plannedAt: inputWib(new Date()), vehicle: "", groupSize: "1", note: "", consent: false });
@@ -23,10 +25,21 @@ export default function GuestRegistration({ service, local = false }: { service:
     return () => { active = false; clearInterval(interval); };
   }, [receipt?.secret, receipt?.status, service]);
 
+  useEffect(() => {
+    if (local || step !== 2 || receipt || !captchaBox.current) return;
+    let live = true;
+    import("@irsyads/supabase/captcha").then(async (m) => {
+      const widget = await m.pasangTurnstile(captchaBox.current!, (token) => { if (live) setCaptcha(token); }, "id");
+      if (live) captchaWidget.current = widget; else widget.hapus();
+    }).catch(() => { if (live) setError("Pemeriksaan keamanan tidak dapat dimuat. Periksa koneksi lalu muat ulang halaman."); });
+    return () => { live = false; captchaWidget.current?.hapus(); captchaWidget.current = null; setCaptcha(null); };
+  }, [local, step, receipt]);
+
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); setError("");
     if (step < 2) { setStep(step + 1); return; }
     if (!form.consent) { setError("Persetujuan penggunaan data diperlukan sebelum mengirim."); return; }
+    if (!local && !captcha) { setError("Pemeriksaan keamanan masih berjalan. Tunggu sebentar lalu kirim lagi."); return; }
     let request = submission;
     if (!request) {
       const secret = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, "0")).join("");
@@ -34,9 +47,9 @@ export default function GuestRegistration({ service, local = false }: { service:
       setSubmission(request);
     }
     setBusy(true);
-    try { const r = await service.register(request.input, request.reference, request.secret); setReceipt(r); window.history.replaceState(null, "", `#pendaftaran=${r.secret}`); }
+    try { const r = await service.register(request.input, request.reference, request.secret, captcha ?? undefined); setReceipt(r); window.history.replaceState(null, "", `#pendaftaran=${r.secret}`); }
     catch (e) { setError((e as Error).message || "Pengiriman belum terkonfirmasi. Periksa koneksi lalu coba lagi."); }
-    finally { setBusy(false); }
+    finally { setBusy(false); captchaWidget.current?.reset(); } // token Turnstile hanya berlaku sekali
   }
   async function refresh() { if (!receipt) return; setBusy(true); setError(""); try { setReceipt(await service.status(receipt.secret)); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }
   async function cancel() { if (!receipt || !window.confirm("Batalkan pendaftaran kunjungan ini?")) return; setBusy(true); try { setReceipt(await service.cancel(receipt.secret)); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }
@@ -80,6 +93,7 @@ export default function GuestRegistration({ service, local = false }: { service:
             <dl className="gc-review">{[["Nama", form.name], ["Asal", form.origin], ["Keperluan", form.purpose], ["Penerima", options!.hosts.find((h) => h.id === form.host)?.name ?? "—"], ["Rencana tiba", fullWib(fromWib(form.plannedAt))], ["Rombongan", `${form.groupSize} orang`], ["Kendaraan", form.vehicle || "—"]].map(([a, b]) => <div key={a}><dt>{a}</dt><dd>{b}</dd></div>)}</dl>
             <div className="gc-callout"><Icon name="shield" /><p>Data digunakan pengelola dan petugas gerbang untuk mengatur kunjungan. Pendaftaran tanpa konfirmasi dihapus paling lambat 24 jam setelah jadwal kedatangan. Catatan kunjungan selesai disimpan sesuai kebijakan lembaga ({options!.retentionDays} hari). Hubungi petugas untuk permintaan terkait data Anda.</p></div>
             <Check label="Saya telah membaca dan menyetujui penggunaan data untuk kunjungan ini." required checked={form.consent} onChange={(v) => setForm((f) => ({ ...f, consent: v }))} />
+            {!local && <div ref={captchaBox} aria-label="Pemeriksaan keamanan" />}
           </>}
           <div className="gc-form-actions">{step > 0 && <button type="button" disabled={busy} onClick={() => { setStep(step - 1); setError(""); setSubmission(null); }}>Kembali</button>}<button type="submit" className="gc-primary" disabled={busy}>{busy ? "Mengirim…" : step === 2 ? "Kirim pendaftaran" : "Lanjutkan"}<Icon name="arrow" size={18} /></button></div>
         </form></section>

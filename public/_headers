@@ -3,10 +3,10 @@
 #
 # Content-Security-Policy memuat tiga penampung yang diisi scripts/write-csp.mjs setelah `astro build`:
 # hash skrip dan gaya inline, serta origin Supabase. Jangan menambahkan 'unsafe-inline' atau 'unsafe-eval'.
-# Turnstile (challenges.cloudflare.com) ditambahkan bersama formulir login dan pendaftaran tamu (bagian B3 dan C1).
+# challenges.cloudflare.com hanya untuk widget Turnstile (pendaftaran tamu; formulir login pada bagian C1).
 /*
   Strict-Transport-Security: max-age=31536000
-  Content-Security-Policy: default-src 'self'; script-src 'self' {{script-hashes}}; style-src 'self' {{style-hashes}}; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' {{supabase-origin}}; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' {{script-hashes}} https://challenges.cloudflare.com; style-src 'self' {{style-hashes}}; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' {{supabase-origin}}; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
   Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()
   X-Content-Type-Options: nosniff
   X-Robots-Tag: noindex, nofollow
