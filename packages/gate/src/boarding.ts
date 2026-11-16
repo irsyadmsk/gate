@@ -95,6 +95,8 @@ export function personPresence(person: GatePerson, movements: GateMovement[], no
   return { key: last.inside ? "inside" : "outside", label: last.inside ? "Terakhir tercatat di dalam" : "Terakhir tercatat di luar", lastAt: last.at, movement: null } as const;
 }
 export const STAFF_SCAN_COOLDOWN_MS = 12_000;
+/** Batas satu impor identitas. Seluruh baris diterapkan atau tidak sama sekali. */
+export const MAX_IMPORT_ROWS = 500;
 export type StaffDirection = "in" | "out";
 export function latestStaffEvent(personId: string, movements: GateMovement[], now: Date) {
   return movements.filter((m) => m.personId === personId).flatMap((m) => [
@@ -243,6 +245,32 @@ export function applyBoardingCommand(state: GateBoardingState, actor: GateActor,
       if (!new RegExp(`^${person.kind === "student" ? "MUR" : "GTK"}-[a-f0-9]{32}$`).test(token) || s.people.some((p) => p.token === token)) invalid("Token baru tidak valid atau sudah dipakai.");
       person.token = token; target = person.id; audit("Kartu diganti; kartu lama dicabut"); break;
     }
+    case "person.import": {
+      manage(actor);
+      if (!Array.isArray(d.rows) || !d.rows.length || d.rows.length > MAX_IMPORT_ROWS) invalid(`Impor harus berisi 1–${MAX_IMPORT_ROWS} baris.`);
+      const numbers = new Set(s.people.map((p) => p.number.toLowerCase())), tokens = new Set(s.people.map((p) => p.token)), added: GatePerson[] = [];
+      (d.rows as unknown[]).forEach((raw, index) => {
+        try {
+          if (!raw || typeof raw !== "object" || Array.isArray(raw)) invalid("Baris tidak dapat dibaca.");
+          const row = raw as Record<string, unknown>;
+          if (row.kind !== "student" && row.kind !== "staff") invalid("Jenis identitas tidak valid.");
+          const kind = row.kind as GatePerson["kind"], number = required(row.number, "Nomor internal", 40), token = required(row.token, "Token kartu", 100);
+          if (numbers.has(number.toLowerCase())) conflict("Nomor internal sudah digunakan.");
+          if (!new RegExp(`^${kind === "student" ? "MUR" : "GTK"}-[a-f0-9]{32}$`).test(token) || tokens.has(token)) invalid("Token kartu tidak valid atau sudah dipakai.");
+          const dorm = kind === "student" ? required(row.dorm, "Asrama", 60) : "";
+          if (kind === "student" && !directory.some((a) => hasRole(a, "approver") && a.dorms.includes(dorm))) invalid("Asrama belum memiliki pengasuh berwenang.");
+          if (kind === "staff" && row.residence !== undefined && row.residence !== "" && row.residence !== "commuter" && row.residence !== "resident") invalid("Kategori tempat tinggal GTK tidak valid.");
+          const person: GatePerson = { id: `${kind === "student" ? "mur" : "gtk"}-${command.id.slice(0, 40)}-${index + 1}`, kind, name: required(row.name, "Nama", 80), number, unit: required(row.unit, "Kelas / unit", 60), dorm, active: true, token };
+          if (kind === "staff" && (row.residence === "commuter" || row.residence === "resident")) person.residence = row.residence;
+          numbers.add(number.toLowerCase()); tokens.add(token); added.push(person);
+        } catch (error) {
+          if (error instanceof GateRuleError) throw new GateRuleError(error.code, `Baris ${index + 1}: ${error.message}`);
+          throw error;
+        }
+      });
+      s.people = [...s.people, ...added]; target = command.id;
+      audit("Identitas diimpor", `${added.length} identitas (${added.filter((p) => p.kind === "student").length} murid, ${added.filter((p) => p.kind === "staff").length} GTK)`); break;
+    }
     case "permit.request": {
       const person = personById(s, d.personId);
       if (!person.active || person.kind !== "student") invalid("Pilih murid aktif.");
@@ -334,6 +362,14 @@ export function applyBoardingCommand(state: GateBoardingState, actor: GateActor,
       if (d.kind === "arrival" && last.key === "inside") conflict("Sudah tercatat di dalam hari ini.");
       s.movements.unshift({ id: command.id, personId: person.id, kind: d.kind as "arrival" | "departure", permitId: "", at, due: "", returnedAt: null, reason: "", destination: "", actorId: actor.id, actorName: actor.name, returnActorId: "", returnActorName: "", gate });
       audit(d.kind === "arrival" ? "Kedatangan GTK dicatat" : "Pulang GTK dicatat"); break;
+    }
+    case "visit.create": {
+      // Tamu jalan-masuk. Tetap menunggu konfirmasi penerima (pengasuh/piket); satpam hanya mendaftarkan.
+      operate(actor);
+      if (d.informed !== true) invalid("Konfirmasi bahwa tamu sudah diberi tahu tentang penggunaan datanya.");
+      if (!/^[a-f0-9]{64}$/.test(String(d.secret))) invalid("Referensi privat tidak valid.");
+      const made = newBoardingVisit(s, d as unknown as GuestRegistration, command.id, String(d.secret), now);
+      s.visits.unshift(made); target = made.id; audit("Tamu jalan-masuk didaftarkan petugas", `${made.name} · ${made.code}`); break;
     }
     case "visit.host": {
       if (!hasRole(actor, "approver")) deny("Konfirmasi penerima dilakukan oleh akun pengasuh/piket.");
@@ -445,20 +481,26 @@ export function applyBoardingCommand(state: GateBoardingState, actor: GateActor,
   return { state: s, target, duplicate };
 }
 
-export function registerBoardingGuest(state: GateBoardingState, input: GuestRegistration, id: string, secret: string, now: Date): { state: GateBoardingState; receipt: GuestReceipt } {
-  if (input.consent !== true) invalid("Baca dan setujui pemberitahuan privasi terlebih dahulu.");
+/** Validasi dan bentuk satu kunjungan baru; dipakai pendaftaran mandiri dan pendaftaran oleh petugas. */
+function newBoardingVisit(state: Pick<GateBoardingState, "settings" | "visits">, input: GuestRegistration, id: string, secret: string, now: Date): BoardingVisit {
   const name = required(input.name, "Nama", 80), origin = required(input.origin, "Asal / instansi", 100), purpose = required(input.purpose, "Keperluan", 160);
   if (!["Wali murid", "Jemput murid", "Tamu lembaga", "Vendor / teknisi"].includes(input.category)) invalid("Pilih kategori tamu.");
   if (!state.settings.hosts.includes(input.host)) invalid("Pilih penerima kunjungan.");
   const plannedAt = date(input.plannedAt, "Rencana kedatangan");
   if (Date.parse(plannedAt) < now.getTime() - 30 * 60000 || Date.parse(plannedAt) > now.getTime() + 30 * 86400_000) invalid("Rencana kedatangan maksimal 30 hari ke depan.");
   const groupSize = Number(input.groupSize); if (!Number.isInteger(groupSize) || groupSize < 1 || groupSize > 20) invalid("Jumlah orang harus 1–20. Rombongan besar hubungi petugas.");
-  const s = structuredClone(state), at = now.toISOString(), code = `T-${id.replace(/-/g, "").slice(0, 12).toUpperCase()}`;
-  if (s.visits.some((v) => v.code === code || v.secret === secret)) conflict("Referensi pendaftaran bentrok. Coba lagi.");
+  const at = now.toISOString(), code = `T-${id.replace(/-/g, "").slice(0, 12).toUpperCase()}`;
+  if (state.visits.some((v) => v.code === code || v.secret === secret)) conflict("Referensi pendaftaran bentrok. Coba lagi.");
   const expiresAt = new Date(Math.max(now.getTime(), Date.parse(plannedAt)) + 24 * 3600_000).toISOString();
-  s.visits.unshift({ id, code, secret, name, origin, category: input.category, phone: clean(input.phone, 24).replace(/[^\d+]/g, ""), host: input.host, purpose, plannedAt, vehicle: clean(input.vehicle, 20).toUpperCase(), groupSize, note: clean(input.note, 300), status: "pending", hostConfirmedBy: "", hostConfirmedAt: "", badge: "", createdAt: at, expiresAt, inAt: null, outAt: null, actorName: "", pickupPermitId: "" });
-  s.revision++;
-  return { state: s, receipt: { code, secret, status: "pending", expiresAt, name } };
+  return { id, code, secret, name, origin, category: input.category, phone: clean(input.phone, 24).replace(/[^\d+]/g, ""), host: input.host, purpose, plannedAt, vehicle: clean(input.vehicle, 20).toUpperCase(), groupSize, note: clean(input.note, 300), status: "pending", hostConfirmedBy: "", hostConfirmedAt: "", badge: "", createdAt: at, expiresAt, inAt: null, outAt: null, actorName: "", pickupPermitId: "" };
+}
+
+export function registerBoardingGuest(state: GateBoardingState, input: GuestRegistration, id: string, secret: string, now: Date): { state: GateBoardingState; receipt: GuestReceipt } {
+  if (input.consent !== true) invalid("Baca dan setujui pemberitahuan privasi terlebih dahulu.");
+  const visit = newBoardingVisit(state, input, id, secret, now);
+  const s = structuredClone(state);
+  s.visits.unshift(visit); s.revision++;
+  return { state: s, receipt: { code: visit.code, secret, status: "pending", expiresAt: visit.expiresAt, name: visit.name } };
 }
 
 export function guestReceipt(state: GateBoardingState, secret: string, now: Date): GuestReceipt {

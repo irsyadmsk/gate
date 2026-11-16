@@ -174,6 +174,7 @@ function personPresence(person, movements, now) {
   return { key: last.inside ? "inside" : "outside", label: last.inside ? "Terakhir tercatat di dalam" : "Terakhir tercatat di luar", lastAt: last.at, movement: null };
 }
 var STAFF_SCAN_COOLDOWN_MS = 12e3;
+var MAX_IMPORT_ROWS = 500;
 function latestStaffEvent(personId, movements, now) {
   return movements.filter((m) => m.personId === personId).flatMap((m) => [
     { id: m.id, direction: m.kind === "arrival" ? "in" : "out", at: m.at },
@@ -347,6 +348,36 @@ function applyBoardingCommand(state, actor, command, now, directory = []) {
       audit("Kartu diganti; kartu lama dicabut");
       break;
     }
+    case "person.import": {
+      manage(actor);
+      if (!Array.isArray(d.rows) || !d.rows.length || d.rows.length > MAX_IMPORT_ROWS) invalid(`Impor harus berisi 1\u2013${MAX_IMPORT_ROWS} baris.`);
+      const numbers = new Set(s.people.map((p) => p.number.toLowerCase())), tokens = new Set(s.people.map((p) => p.token)), added = [];
+      d.rows.forEach((raw, index) => {
+        try {
+          if (!raw || typeof raw !== "object" || Array.isArray(raw)) invalid("Baris tidak dapat dibaca.");
+          const row = raw;
+          if (row.kind !== "student" && row.kind !== "staff") invalid("Jenis identitas tidak valid.");
+          const kind = row.kind, number = required2(row.number, "Nomor internal", 40), token = required2(row.token, "Token kartu", 100);
+          if (numbers.has(number.toLowerCase())) conflict("Nomor internal sudah digunakan.");
+          if (!new RegExp(`^${kind === "student" ? "MUR" : "GTK"}-[a-f0-9]{32}$`).test(token) || tokens.has(token)) invalid("Token kartu tidak valid atau sudah dipakai.");
+          const dorm = kind === "student" ? required2(row.dorm, "Asrama", 60) : "";
+          if (kind === "student" && !directory.some((a) => hasRole(a, "approver") && a.dorms.includes(dorm))) invalid("Asrama belum memiliki pengasuh berwenang.");
+          if (kind === "staff" && row.residence !== void 0 && row.residence !== "" && row.residence !== "commuter" && row.residence !== "resident") invalid("Kategori tempat tinggal GTK tidak valid.");
+          const person = { id: `${kind === "student" ? "mur" : "gtk"}-${command.id.slice(0, 40)}-${index + 1}`, kind, name: required2(row.name, "Nama", 80), number, unit: required2(row.unit, "Kelas / unit", 60), dorm, active: true, token };
+          if (kind === "staff" && (row.residence === "commuter" || row.residence === "resident")) person.residence = row.residence;
+          numbers.add(number.toLowerCase());
+          tokens.add(token);
+          added.push(person);
+        } catch (error) {
+          if (error instanceof GateRuleError) throw new GateRuleError(error.code, `Baris ${index + 1}: ${error.message}`);
+          throw error;
+        }
+      });
+      s.people = [...s.people, ...added];
+      target = command.id;
+      audit("Identitas diimpor", `${added.length} identitas (${added.filter((p) => p.kind === "student").length} murid, ${added.filter((p) => p.kind === "staff").length} GTK)`);
+      break;
+    }
     case "permit.request": {
       const person = personById(s, d.personId);
       if (!person.active || person.kind !== "student") invalid("Pilih murid aktif.");
@@ -471,6 +502,16 @@ function applyBoardingCommand(state, actor, command, now, directory = []) {
       if (d.kind === "arrival" && last.key === "inside") conflict("Sudah tercatat di dalam hari ini.");
       s.movements.unshift({ id: command.id, personId: person.id, kind: d.kind, permitId: "", at, due: "", returnedAt: null, reason: "", destination: "", actorId: actor.id, actorName: actor.name, returnActorId: "", returnActorName: "", gate });
       audit(d.kind === "arrival" ? "Kedatangan GTK dicatat" : "Pulang GTK dicatat");
+      break;
+    }
+    case "visit.create": {
+      operate(actor);
+      if (d.informed !== true) invalid("Konfirmasi bahwa tamu sudah diberi tahu tentang penggunaan datanya.");
+      if (!/^[a-f0-9]{64}$/.test(String(d.secret))) invalid("Referensi privat tidak valid.");
+      const made = newBoardingVisit(s, d, command.id, String(d.secret), now);
+      s.visits.unshift(made);
+      target = made.id;
+      audit("Tamu jalan-masuk didaftarkan petugas", `${made.name} \xB7 ${made.code}`);
       break;
     }
     case "visit.host": {
@@ -645,8 +686,7 @@ function applyBoardingCommand(state, actor, command, now, directory = []) {
   s.receipts[key] = { fingerprint, target };
   return { state: s, target, duplicate };
 }
-function registerBoardingGuest(state, input, id, secret, now) {
-  if (input.consent !== true) invalid("Baca dan setujui pemberitahuan privasi terlebih dahulu.");
+function newBoardingVisit(state, input, id, secret, now) {
   const name = required2(input.name, "Nama", 80), origin = required2(input.origin, "Asal / instansi", 100), purpose = required2(input.purpose, "Keperluan", 160);
   if (!["Wali murid", "Jemput murid", "Tamu lembaga", "Vendor / teknisi"].includes(input.category)) invalid("Pilih kategori tamu.");
   if (!state.settings.hosts.includes(input.host)) invalid("Pilih penerima kunjungan.");
@@ -654,12 +694,18 @@ function registerBoardingGuest(state, input, id, secret, now) {
   if (Date.parse(plannedAt) < now.getTime() - 30 * 6e4 || Date.parse(plannedAt) > now.getTime() + 30 * 864e5) invalid("Rencana kedatangan maksimal 30 hari ke depan.");
   const groupSize = Number(input.groupSize);
   if (!Number.isInteger(groupSize) || groupSize < 1 || groupSize > 20) invalid("Jumlah orang harus 1\u201320. Rombongan besar hubungi petugas.");
-  const s = structuredClone(state), at = now.toISOString(), code = `T-${id.replace(/-/g, "").slice(0, 12).toUpperCase()}`;
-  if (s.visits.some((v) => v.code === code || v.secret === secret)) conflict("Referensi pendaftaran bentrok. Coba lagi.");
+  const at = now.toISOString(), code = `T-${id.replace(/-/g, "").slice(0, 12).toUpperCase()}`;
+  if (state.visits.some((v) => v.code === code || v.secret === secret)) conflict("Referensi pendaftaran bentrok. Coba lagi.");
   const expiresAt = new Date(Math.max(now.getTime(), Date.parse(plannedAt)) + 24 * 36e5).toISOString();
-  s.visits.unshift({ id, code, secret, name, origin, category: input.category, phone: clean(input.phone, 24).replace(/[^\d+]/g, ""), host: input.host, purpose, plannedAt, vehicle: clean(input.vehicle, 20).toUpperCase(), groupSize, note: clean(input.note, 300), status: "pending", hostConfirmedBy: "", hostConfirmedAt: "", badge: "", createdAt: at, expiresAt, inAt: null, outAt: null, actorName: "", pickupPermitId: "" });
+  return { id, code, secret, name, origin, category: input.category, phone: clean(input.phone, 24).replace(/[^\d+]/g, ""), host: input.host, purpose, plannedAt, vehicle: clean(input.vehicle, 20).toUpperCase(), groupSize, note: clean(input.note, 300), status: "pending", hostConfirmedBy: "", hostConfirmedAt: "", badge: "", createdAt: at, expiresAt, inAt: null, outAt: null, actorName: "", pickupPermitId: "" };
+}
+function registerBoardingGuest(state, input, id, secret, now) {
+  if (input.consent !== true) invalid("Baca dan setujui pemberitahuan privasi terlebih dahulu.");
+  const visit = newBoardingVisit(state, input, id, secret, now);
+  const s = structuredClone(state);
+  s.visits.unshift(visit);
   s.revision++;
-  return { state: s, receipt: { code, secret, status: "pending", expiresAt, name } };
+  return { state: s, receipt: { code: visit.code, secret, status: "pending", expiresAt: visit.expiresAt, name: visit.name } };
 }
 function guestReceipt(state, secret, now) {
   const v = state.visits.find((v2) => v2.secret === secret && secret.length >= 32);
@@ -679,6 +725,7 @@ export {
   ENTRY_LABELS,
   GateRuleError,
   HANDOVER_CHECKS,
+  MAX_IMPORT_ROWS,
   PERMIT_LABELS,
   STAFF_SCAN_COOLDOWN_MS,
   VISIT_LABELS,

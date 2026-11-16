@@ -5,12 +5,12 @@ import { ACTORS, createBoardingSeed } from './fixtures/gate-boarding-seed.mjs';
 const code=buildSync({entryPoints:['supabase/functions/_shared/gate-console-handler.ts'],bundle:true,format:'esm',platform:'node',write:false}).outputFiles[0].text;
 const {nativeGateHandler}=await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
 const token='GTK-'+'a'.repeat(32);
-function setup(publicAccess=false){
+function setup(publicAccess=false,captcha){
  let state=createBoardingSeed();let saves=0,collide=false;const store={
   read:async()=>structuredClone(state),directory:async()=>ACTORS,
   identity:async(auth)=>{const a=ACTORS.find(a=>a.username===auth.slice(7));if(!a)throw {status:401};return a;},rate:async()=>true,
   commit:async(revision,next)=>{if(collide){collide=false;state.revision++;return false;}if(revision!==state.revision)return false;state=structuredClone(next);saves++;return true;}
- };return {handler:nativeGateHandler(store,publicAccess),store,state:()=>state,saves:()=>saves,collide:()=>{collide=true;}};
+ };return {handler:nativeGateHandler(store,publicAccess,undefined,captcha),store,state:()=>state,saves:()=>saves,collide:()=>{collide=true;}};
 }
 const call=async(h,body,user='satpam',extra={})=>{const r=await h(new Request('https://example.test/functions/v1/gate-console',{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://gate.irsyads.com',...(user?{Authorization:'Bearer '+user}:{}),...extra},body:JSON.stringify(body)}));return {status:r.status,data:await r.json()};};
 test('native API: origin asing, anonymous dan token palsu ditolak',async()=>{
@@ -40,10 +40,11 @@ test('native API publik: hanya opsi penerima yang terbuka; command/snapshot tida
  assert.equal((await call(handler,{op:'snapshot'},'admin')).status,404);
 });
 test('native API publik: register retry tidak ganda, status butuh rahasia dan cancel tidak menghapus riwayat',async()=>{
- const x=setup(true),secret='1'.repeat(64),reference=crypto.randomUUID();
- const body={op:'register',reference,secret,input:{name:'Tamu Sintetis',category:'Tamu lembaga',origin:'Contoh',phone:'',host:'pengasuh-a',purpose:'Koordinasi',plannedAt:new Date().toISOString(),vehicle:'',groupSize:1,note:'',consent:true}};
+ const verified=[],x=setup(true,{verify:async(t,ip)=>{verified.push(t);return t==='token-valid-0001'||t==='token-valid-0002';}}),secret='1'.repeat(64),reference=crypto.randomUUID();
+ const body={op:'register',reference,secret,input:{name:'Tamu Sintetis',category:'Tamu lembaga',origin:'Contoh',phone:'',host:'pengasuh-a',purpose:'Koordinasi',plannedAt:new Date().toISOString(),vehicle:'',groupSize:1,note:'',consent:true},captchaToken:'token-valid-0001'};
  const first=await call(x.handler,body,'');assert.equal(first.status,201);
  assert.equal((await call(x.handler,body,'')).status,200);assert.equal(x.state().visits.filter(v=>v.id===reference).length,1);
+ assert.deepEqual(verified,['token-valid-0001']);
  assert.equal((await call(x.handler,{op:'status',secret:'2'.repeat(64)},'')).status,404);
  assert.equal((await call(x.handler,{op:'cancel',secret},'')).data.status,'cancelled');assert.ok(x.state().visits.some(v=>v.id===reference));
  const saved=x.saves();assert.equal((await call(x.handler,{op:'cancel',secret},'')).data.status,'cancelled');assert.equal(x.saves(),saved);
@@ -54,4 +55,35 @@ test('native API: baca pos menjalankan retensi walau tidak ada pendaftaran publi
 });
 test('native API: pembatasan persistensi menahan penyalahgunaan tanpa memproses tindakan',async()=>{
  const x=setup();x.store.rate=async()=>false;assert.equal((await call(x.handler,{op:'snapshot'})).status,429);assert.equal(x.saves(),0);
+});
+
+const guestBody=(extra={})=>({op:'register',reference:crypto.randomUUID(),secret:'3'.repeat(64),input:{name:'Tamu Sintetis',category:'Tamu lembaga',origin:'Contoh',phone:'',host:'pengasuh-a',purpose:'Koordinasi',plannedAt:new Date().toISOString(),vehicle:'',groupSize:1,note:'',consent:true},...extra});
+test('native API publik: pendaftaran gagal tertutup tanpa pemverifikasi CAPTCHA di server',async()=>{
+ const x=setup(true);const before=x.state().visits.length;
+ const r=await call(x.handler,guestBody({captchaToken:'token-valid-0001'}),'');assert.equal(r.status,503);assert.equal(x.state().visits.length,before);assert.equal(x.saves(),0);
+ assert.equal((await call(x.handler,{op:'options'},'')).status,200);
+});
+test('native API publik: token CAPTCHA hilang, terlalu panjang, atau ditolak tidak membuat pendaftaran',async()=>{
+ const calls=[],x=setup(true,{verify:async(t)=>{calls.push(t);return false;}});const before=x.state().visits.length;
+ assert.equal((await call(x.handler,guestBody(),'')).status,400);
+ assert.equal((await call(x.handler,guestBody({captchaToken:''}),'')).status,400);
+ assert.equal((await call(x.handler,guestBody({captchaToken:'x'.repeat(2049)}),'')).status,400);
+ assert.equal((await call(x.handler,guestBody({captchaToken:'token-palsu-0001'}),'')).status,400);
+ assert.deepEqual(calls,['token-palsu-0001']);assert.equal(x.state().visits.length,before);assert.equal(x.saves(),0);
+});
+test('native API publik: pemverifikasi yang gagal atau melempar galat ditolak, dan status/batal tidak butuh token',async()=>{
+ const x=setup(true,{verify:async()=>{throw new Error('jaringan');}});
+ assert.equal((await call(x.handler,guestBody({captchaToken:'token-valid-0001'}),'')).status,400);assert.equal(x.saves(),0);
+ const y=setup(true,{verify:async(t)=>t==='token-valid-0002'}),body=guestBody({captchaToken:'token-valid-0002'});
+ assert.equal((await call(y.handler,body,'')).status,201);
+ assert.equal((await call(y.handler,{op:'status',secret:body.secret},'')).status,200);
+ assert.equal((await call(y.handler,{op:'cancel',secret:body.secret},'')).data.status,'cancelled');
+});
+test('native API: impor identitas menerima isian lebih besar dari 24 KB, perintah lain tetap dibatasi',async()=>{
+ const x=setup();
+ const rows=Array.from({length:300},(_,i)=>({kind:'staff',name:'Guru Uji '+i,number:'GTK-8'+i,unit:'Guru mata pelajaran uji',residence:'commuter',token:'GTK-'+String(i).padStart(32,'d')}));
+ const big=await call(x.handler,{op:'command',command:{id:'native-import-0001',type:'person.import',data:{rows}}},'admin');
+ assert.equal(big.status,200);assert.equal(x.state().people.filter(p=>p.number.startsWith('GTK-8')).length,300);
+ const other=await call(x.handler,{op:'command',command:{id:'native-big-00001',type:'entry.add',data:{kind:'incident',title:'x',note:'y'.repeat(30000)}}},'satpam');
+ assert.equal(other.status,413);
 });

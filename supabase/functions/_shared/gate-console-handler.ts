@@ -9,8 +9,10 @@ export interface NativeGateStore {
   directory(): Promise<GateActor[]>;
   rate(key: string, maximum: number, seconds: number): Promise<boolean>;
 }
+/** Pemeriksaan manusia untuk pendaftaran tamu publik (Cloudflare Turnstile di produksi). */
+export interface CaptchaVerifier { verify(token: string, ip: string | null): Promise<boolean> }
 const ALLOWED = ['https://gate.irsyads.com', 'https://studio.irsyads.com', 'https://id.irsyads.com'];
-export function nativeGateHandler(store: NativeGateStore, publicAccess = false, photos?: PhotoProvider) {
+export function nativeGateHandler(store: NativeGateStore, publicAccess = false, photos?: PhotoProvider, captcha?: CaptchaVerifier) {
   return async (req: Request): Promise<Response> => {
     const origin = req.headers.get('origin');
     const headers: Record<string, string> = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', Vary: 'Origin' };
@@ -29,8 +31,10 @@ export function nativeGateHandler(store: NativeGateStore, publicAccess = false, 
       raw += decoder.decode();
       let body: any; try { body = JSON.parse(raw); } catch { return json(400, { error: 'JSON tidak valid.' }); }
       if (!body || typeof body !== 'object' || Array.isArray(body)) return json(400, { error: 'Isian tidak valid.' });
-      if (size > (body.op === 'photo.upload' ? 2_100_000 : body.op === 'cards.print' ? 80000 : 24000)) return json(413, { error: 'Isian terlalu besar.' });
+      const limit = body.op === 'photo.upload' ? 2_100_000 : body.op === 'cards.print' ? 80000 : body.op === 'command' && body.command?.type === 'person.import' ? 260_000 : 24000;
+      if (size > limit) return json(413, { error: 'Isian terlalu besar.' });
       if (publicAccess) {
+        const ip = req.headers.get('cf-connecting-ip') ?? req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
         const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${new Date().toISOString().slice(0, 10)}:${req.headers.get('cf-connecting-ip') ?? req.headers.get('x-forwarded-for') ?? 'unknown'}`));
         const client = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
         if (!await store.rate('public:' + client, 180, 60) || !await store.rate('public:global', 3000, 60)) return json(429, { error: 'Terlalu banyak permintaan. Coba lagi sebentar.' });
@@ -38,8 +42,12 @@ export function nativeGateHandler(store: NativeGateStore, publicAccess = false, 
         if (body.op === 'options') { const state = await store.read('', undefined, true); return json(200, { siteName: state.settings.siteName, hosts: directory.filter((a) => state.settings.hosts.includes(a.id)).map(({ id, name }) => ({ id, name })), retentionDays: state.settings.guestRetentionDays }); }
         if (!['register', 'status', 'cancel'].includes(body.op)) return json(404, { error: 'Tindakan tidak dikenal.' });
         if (!/^[a-f0-9]{64}$/.test(String(body.secret))) return json(400, { error: 'Referensi privat tidak valid.' });
+        let human: boolean | undefined;
         if (body.op === 'register') {
+          // Gagal tertutup: tanpa pemverifikasi CAPTCHA di server, pendaftaran mandiri tidak dibuka.
+          if (!captcha) return json(503, { error: 'Pendaftaran mandiri belum tersedia. Hubungi petugas.' });
           if (!/^[a-f0-9-]{36}$/.test(String(body.reference)) || !body.input || typeof body.input !== 'object') return json(400, { error: 'Pendaftaran tidak valid.' });
+          if (typeof body.captchaToken !== 'string' || !body.captchaToken || body.captchaToken.length > 2048) return json(400, { error: 'Pemeriksaan keamanan belum selesai. Tunggu sebentar lalu kirim lagi.' });
           if (!await store.rate('submit:' + client, 20, 3600) || !await store.rate('submit:global', 500, 3600)) return json(429, { error: 'Pendaftaran terlalu sering. Hubungi petugas.' });
         }
         for (let attempt = 0; attempt < 5; attempt++) {
@@ -58,6 +66,9 @@ export function nativeGateHandler(store: NativeGateStore, publicAccess = false, 
           if (previous) { if (previous.secret !== body.secret) return json(409, { error: 'Referensi sudah digunakan.' }); return json(200, guestReceipt(state, body.secret, new Date())); }
           if (state.visits.filter((v) => ['pending', 'accepted'].includes(v.status)).length >= 2000) return json(429, { error: 'Antrean pendaftaran penuh. Hubungi petugas.' });
           if (!directory.some((a) => a.id === body.input.host && state.settings.hosts.includes(a.id))) return json(400, { error: 'Penerima belum tersedia. Hubungi petugas.' });
+          // Pengulangan dengan referensi yang sama dijawab di atas tanpa token baru; token Turnstile hanya berlaku sekali.
+          human ??= await captcha!.verify(body.captchaToken, ip).catch(() => false);
+          if (!human) return json(400, { error: 'Pemeriksaan keamanan gagal. Muat ulang pemeriksaan lalu kirim lagi.' });
           const result = registerBoardingGuest(state, body.input, body.reference, body.secret, new Date());
           if (await store.commit(expected, result.state)) return json(201, result.receipt);
         }
