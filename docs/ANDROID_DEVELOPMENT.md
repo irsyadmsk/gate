@@ -52,6 +52,12 @@ APK `debug` memakai paket `com.irsyads.gate.debug` dan aset lokal. Gate membuka 
 
 Build `release` ditahan sampai sambungan Irsyads ID dan Gate lulus uji. Berikutnya verifikasi perangkat pos, penandatanganan oleh penerbit, dan track pengujian Play Console.
 
+## Ekspor dan cetak
+
+WebView tidak menangani unduhan blob maupun `window.print()`, jadi aplikasi memakai plugin `GateFiles` (`GateFilesPlugin.java`, antarmuka di `src/lib/device-files.ts`). Ekspor CSV/XLSX/DOCX ditulis ke `cache/exports/` lalu dibagikan lewat lembar berbagi sistem (FileProvider, entri `cache-path` di `file_paths.xml`); cetak kartu dan laporan memakai PrintManager, yang menawarkan "Simpan sebagai PDF". Berkas sementara dibuang saat keluar akun dan bila lebih dari satu jam. Plugin ini terdaftar di semua varian, termasuk fixture.
+
+Uji di perangkat: ekspor tiap format dan buka di aplikasi tujuan; cetak kartu dan simpan sebagai PDF; keluar akun lalu pastikan `cache/exports/` kosong. Sampai saat ini plugin baru teruji sampai kompilasi dan paket APK fixture.
+
 ## Bukti uji Supabase lokal
 
 Stack Docker terpisah menguji OAuth PKCE dengan penyedia Supabase Auth dan Postgres lokal. Akun sintetis memberi persetujuan atau menolak melalui API Supabase. Token Satpam membuka snapshot dan mencatat pergerakan GTK melalui handler Gate serta RPC yang ada. Pengulangan perintah terdeteksi, akun tanpa peran ditolak, dan sesi Android yang dicabut ditolak Gate. Sesi web tetap berlaku setelah logout Android. Harness lokal menjalankan handler dalam Node dengan adapter konfigurasi Deno. Uji ini mencakup protokol dan backend dengan akun sintetis. Uji portal Irsyads ID staging, verifikasi domain App Link dan penggunaan di perangkat masih terpisah.

@@ -79,19 +79,21 @@ Urutan kerja: **A → (B dan C) → D**. B dan C boleh paralel di Folder UJI yan
 
 **Lulus bila:** `check:public` hijau, 137/137 tes lulus di PowerShell dan Git Bash, CSP aktif tanpa galat konsol di `/` dan `/tamu`, dan `git ls-files` tidak memuat berkas terlarang.
 
-**Status 16 Nov 2026:** A1–A6 selesai di `main` lokal (belum di-push). `npm test` 151/151 lulus di PowerShell dan Git Bash; `check:public` hijau termasuk riwayat Git; CSP diuji di browser pada `/`, `/tamu`, callback, dan 404 tanpa pelanggaran, dan terbukti memblokir fetch ke host asing serta skrip inline sisipan. Belum teruji: layar setelah login (pemindai kamera, foto, ekspor) di bawah CSP, dan build rilis Android. Branch kerja `codex/gate-android-uat` masih ada sampai pemilik mengonfirmasi penghapusannya. Lisensi (K5) belum ditetapkan.
+**Status 16 Nov 2026:** A1–A6 selesai dan sudah di-push ke `main`; branch kerja `codex/gate-android-uat` dihapus. `npm test` 151/151 lulus di PowerShell dan Git Bash; `check:public` hijau termasuk riwayat Git; CSP diuji di browser pada `/`, `/tamu`, callback, dan 404 tanpa pelanggaran, dan terbukti memblokir fetch ke host asing serta skrip inline sisipan. Belum teruji: layar setelah login (pemindai kamera, foto, ekspor) di bawah CSP, dan build rilis Android. Lisensi (K5) belum ditetapkan.
 
 ### B. Gate mandiri tanpa Studio
 
 | Langkah | Perbaikan |
 |---|---|
-| B1 | **Satu jalur kode.** Hapus mode lama (`GateApp`, `GtkPanel`, `GuestForm`, `gate-tamu`, `src/lib/{store,guest-api,auth,auth-supabase}.ts`, impor pengaturan dari Studio). Pertahankan fixture loopback. Sesuaikan tes. |
+| B1 | **Satu jalur kode.** Hapus mode lama (`GateApp`, `GtkPanel`, `GuestForm`, `src/lib/{store,guest-api,auth,auth-supabase}.ts`, impor pengaturan dari Studio) beserta inti TypeScript lama (`remote`, `sync`, `staff`) dan tesnya. Pertahankan fixture loopback. Fungsi tepi `gate-tamu`, migrasi, dan tes SQL-nya sengaja **tidak** disentuh: menghapusnya adalah keputusan backend yang butuh konfirmasi pemilik (cek dulu apakah masih terpasang di produksi). |
 | B2 | **Kartu.** Hapus tautan ke Studio. Tambah impor massal murid/GTK dari CSV untuk admin (`person.import`): pratinjau, deteksi nomor ganda, batas 500 baris, berkas tidak disimpan. Rotasi dan penonaktifan kartu tetap lewat `person.rotate` dan `person.save`. |
 | B3 | **Tamu.** Tambah `visit.create` untuk satpam/admin (tamu jalan-masuk) dengan validasi yang sama seperti `registerBoardingGuest`, mencatat siapa yang mendaftarkan. Formulirnya di dalam aplikasi, tidak lagi membuka browser luar. Form publik `/tamu` tetap ada, tetapi `gate-public` wajib Turnstile dan batas antrean per asal (S8). |
 | B4 | **Ekspor dan cetak di Android.** Bagikan CSV/XLSX/DOCX lewat share sheet (FileProvider + `ACTION_SEND`, atau `@capacitor/share` + `@capacitor/filesystem` dengan versi dikunci). Cetak kartu dan laporan menjadi PDF yang dibagikan; jangan bergantung pada `window.print()`. Hapus berkas sementara setelah dibagikan dan saat logout. Pertahankan penetralan formula di CSV dan tambah tes untuk XLSX/DOCX. |
 | B5 | **Peran.** Gate tidak membuat peran global. `admin` dan `staff` tetap dari RBAC Irsyads ID; Gate mengelola hak Gate (satpam, tautan GTK↔akun, pengasuh, penerima tamu). Gate menautkan ke halaman akun di Irsyads ID, bukan Studio (K2). |
 
 **Lulus bila:** akun admin yang sudah memiliki peran dapat membuat GTK dan kartu, mengimpor CSV, mencetak, mendaftarkan tamu jalan-masuk, dan mengekspor CSV/XLSX/DOCX **di web dan di APK tanpa membuka Studio**. Spam pada `/tamu` tanpa token Turnstile ditolak.
+
+**Status 16 Nov 2026:** B1–B5 selesai di `main` lokal (belum di-push, belum dideploy). `npm test` 143/143 lulus. Diuji: tes unit untuk impor, tamu jalan-masuk, CAPTCHA server, dan berkas perangkat; fixture di browser (impor CSV dengan pratinjau kesalahan dan impor sukses, pendaftaran tamu jalan-masuk yang muncul sebagai "Menunggu konfirmasi penerima", ekspor CSV/XLSX/DOCX); widget Turnstile termuat di bawah CSP; APK fixture dibangun dengan plugin `GateFiles`. **Belum teruji:** berbagi berkas dan cetak di perangkat Android (hanya kompilasi), widget Turnstile pada form tamu yang sebenarnya (butuh `gate-public` terdeploy), dan verifikasi token di server (butuh `TURNSTILE_SECRET_KEY`). `person.import` dan `visit.create` hanya ada di engine hasil build; sebelum frontend baru dirilis, fungsi `gate-console` dan `gate-public` harus dideploy lebih dulu (lihat bagian 5).
 
 ### C. Login lewat Gate dan SSO Irsyads ID
 
@@ -126,7 +128,7 @@ Urutan kerja: **A → (B dan C) → D**. B dan C boleh paralel di Folder UJI yan
 Tiap baris butuh konfirmasi pemilik sebelum dilakukan.
 
 - [ ] **Repo:** A1–A6 selesai dan di `main`; `check:public` hijau; secret scanning aktif.
-- [ ] **Backend:** `gate-public` dengan Turnstile, serta `visit.create` dan `person.import` (bila perlu migrasi, tulis rollback). Urutan: rekonsiliasi migrasi → fungsi → frontend, seperti catatan rilis sebelumnya.
+- [ ] **Backend:** tidak ada migrasi baru (perintah baru hidup di dokumen state). Urutan: set secret `TURNSTILE_SECRET_KEY` di Edge Functions → deploy `gate-console` dan `gate-public` (engine baru, CAPTCHA wajib) → deploy frontend Worker `gate`. `gate-public` tanpa secret menolak pendaftaran tamu (gagal tertutup), dan frontend lama tanpa token Turnstile ditolak `gate-public` baru, jadi `gate-public` dan frontend dideploy berdekatan. Rollback frontend aman; jangan mengembalikan engine lama setelah `guardAccess` dipakai.
 - [ ] **Login:** hostname widget Turnstile diverifikasi di Cloudflare untuk `gate.irsyads.com` dan `localhost`; formulir login lulus uji web dan perangkat; CSP mengizinkan Turnstile. Fase 2 (OAuth server) tidak termasuk rilis pertama.
 - [ ] **Play:** D1–D6, lalu unggah ke Internal testing.
 

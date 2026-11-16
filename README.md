@@ -22,11 +22,11 @@ Buka http://127.0.0.1:4341. `npm run build` menghasilkan dist/; `npm run preview
 - Kandidat ruang admin dan satpam kini tersedia langsung di Gate: GTK/kartu, status petugas, laporan, dan serah terima. Panel Studio lama tetap menjadi integrasi kompatibilitas; kandidat ini belum dirilis ke produksi. Lihat docs/2026-10-29_WORKSPACES_LOCAL.md.
 - Domain layanan yang sudah ada: https://gate.irsyads.com. Pemisahan ini tidak men-deploy ulang layanan atau mengubah database/DNS.
 
-Salinan terbatas adapter login/sesi berada di packages/supabase/src/; packages/design-tokens/src/preferences.ts hanya mendefinisikan tipe preferensi. Inti aturan di packages/gate/ juga memiliki salinan kompatibilitas di monorepo untuk Studio. Perubahan kontrak keduanya harus dikoordinasikan; lihat [catatan pemisahan](docs/EXTRACTION.md).
+Salinan terbatas adapter login/sesi berada di packages/supabase/src/; packages/design-tokens/src/preferences.ts hanya mendefinisikan tipe preferensi. Inti aturan di packages/gate/ hanya memuat mesin Gate asrama; Studio memelihara salinannya sendiri di monorepo Irsyads. Perubahan kontrak bersama harus dikoordinasikan; lihat [catatan pemisahan](docs/EXTRACTION.md).
 
 ## Konfigurasi
 
-Salin .env.example ke .env jika perlu mengganti konfigurasi. Nilai bawaan adapter memakai URL dan kunci **publishable** Irsyads yang memang tersedia di browser; kunci ini bukan kunci server. Mode native aktif secara bawaan. Jangan menaruh secret/service-role key dalam variabel PUBLIC_*, frontend, atau Git.
+Salin .env.example ke .env jika perlu mengganti konfigurasi. Nilai bawaan adapter memakai URL dan kunci **publishable** Irsyads yang memang tersedia di browser; kunci ini bukan kunci server. Jangan menaruh secret/service-role key dalam variabel PUBLIC_*, frontend, atau Git.
 
 Frontend pengembangan biasa tetap mengarah ke layanan yang dikonfigurasi. Untuk uji dengan **data sintetis saja**, gunakan:
 
@@ -45,6 +45,8 @@ Proyek Capacitor ada di `android/`. [Panduan Android](docs/ANDROID_DEVELOPMENT.m
 supabase/functions/{gate-console,gate-public,gate-tamu} dan migrasi Gate disalin sebagai sumber yang sudah ada. Migrasi membutuhkan skema identitas/RBAC Irsyads; ini bukan bootstrap Supabase baru. ops/review/ hanya berisi SQL skema untuk tes. Tidak ada data sekolah, backup database, riwayat monorepo, .env, atau secret server yang disertakan.
 
 `npm run build:engine` membentuk ulang engine fungsi dari inti aturan. Perubahan engine memerlukan tes ulang dan pemeriksaan kompatibilitas Studio. Penerapan backend, migrasi, dan deploy Cloudflare dilakukan secara sengaja dengan persetujuan pemilik. Tidak ada workflow Actions/deploy otomatis. Konfigurasi Worker gate berada di wrangler.jsonc.
+
+Pendaftaran tamu mandiri (`gate-public`) memverifikasi token Cloudflare Turnstile di server dan membutuhkan secret `TURNSTILE_SECRET_KEY` di Edge Functions; tanpa secret pendaftaran ditolak. Pengembangan lokal formulir tamu memakai `http://localhost:4341` (bukan 127.0.0.1) karena widget hanya mengizinkan hostname `*.irsyads.com` dan `localhost`.
 
 Kode dipublikasikan tanpa penambahan lisensi distribusi baru pada saat pemisahan.
 
