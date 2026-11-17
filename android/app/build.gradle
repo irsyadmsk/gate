@@ -7,6 +7,20 @@ def requiredReleaseValue = { name ->
     value
 }
 
+// versionName mengikuti "version" di package.json. versionCode naik monoton dari env; rilis wajib mengisinya.
+def gateVersionName = new groovy.json.JsonSlurper().parse(rootProject.file('../package.json')).version
+def gateVersionCode = {
+    def raw = providers.environmentVariable('GATE_ANDROID_VERSION_CODE').orNull
+    if (!raw) {
+        if (gateReleaseEnabled) throw new GradleException('Missing release setting: GATE_ANDROID_VERSION_CODE')
+        return 1
+    }
+    if (!(raw ==~ /[1-9][0-9]{0,9}/) || raw.toLong() > 2100000000L) {
+        throw new GradleException('GATE_ANDROID_VERSION_CODE harus bilangan bulat 1..2100000000')
+    }
+    return raw.toInteger()
+}()
+
 android {
     namespace = "com.irsyads.gate"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -14,8 +28,8 @@ android {
         applicationId "com.irsyads.gate"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode gateVersionCode
+        versionName gateVersionName
         manifestPlaceholders.gateAppLinkHost = providers.environmentVariable('PUBLIC_GATE_ANDROID_APP_LINK_HOST').orElse('gate.irsyads.com').get()
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

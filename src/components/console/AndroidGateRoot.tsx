@@ -10,7 +10,7 @@ const origin = import.meta.env.PUBLIC_GATE_ORIGIN || 'https://gate.irsyads.com';
 const guestUrl = new URL('/tamu', origin).href;
 
 /** Android: login dengan formulir di aplikasi. Sesi disimpan terenkripsi (Keystore); tidak ada tombol Irsyads ID pada versi pertama. */
-export default function AndroidGateRoot() {
+export default function AndroidGateRoot({ onDemo }: { onDemo?: (actorId: string) => void }) {
   const [signedIn, setSignedIn] = useState<boolean | undefined>(undefined);
   const [notice, setNotice] = useState('');
 
@@ -26,6 +26,6 @@ export default function AndroidGateRoot() {
   }, []);
 
   if (signedIn) return <GateConsole service={boarding.service} externalGuestUrl={guestUrl} signedOut={() => { setNotice(''); setSignedIn(false); }} />;
-  return <LoginScreen checking={signedIn === undefined} notice={notice} guestHref={guestUrl} recoveryUrl={lupaSandiUrl(origin + '/')}
+  return <LoginScreen checking={signedIn === undefined} notice={notice} guestHref={guestUrl} recoveryUrl={lupaSandiUrl(origin + '/')} onDemo={onDemo} privacyHref={new URL('/privasi', origin).href}
     signIn={async (email, password, captchaToken) => { const failure = await boarding.session.signIn(email, password, captchaToken); if (!failure) { setNotice(''); setSignedIn(true); } return failure; }} />;
 }

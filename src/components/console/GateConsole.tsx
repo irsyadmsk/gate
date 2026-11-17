@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { hasRole, personPresence, canExitStudent, wibDay, PERMIT_LABELS, VISIT_LABELS, ENTRY_LABELS, type BoardingSnapshot, type BoardingCommand } from "@irsyads/gate-core";
 import { boardingReport, boardingDocx, boardingXlsx, type BoardingReportKind } from "@irsyads/gate-core";
+import { App } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import type { ConsoleService } from "../../lib/boarding-http";
 import ConsoleDialogs, { type ConsoleDialog } from "./ConsoleDialogs";
 import ConsoleScanner from "./ConsoleScanner";
@@ -30,14 +32,18 @@ const allNav: { id: Page; label: string; icon: string }[] = [
   { id: "duty", label: "Jaga & serah terima", icon: "shield" }, { id: "reports", label: "Riwayat & laporan", icon: "file" },
   { id: "more", label: "Lainnya", icon: "menu" },
 ];
-export default function GateConsole({ service, local = false, signedOut, externalGuestUrl }: {
+export default function GateConsole({ service, local = false, demo = false, signedOut, externalGuestUrl }: {
   service: ConsoleService;
   local?: boolean;
+  /** Mode demo: data contoh di memori, tanpa jaringan. Tautan ke layanan nyata (pendaftaran tamu) disembunyikan. */
+  demo?: boolean;
   signedOut: () => void;
   externalGuestUrl?: string;
 }) {
   const guestHref = externalGuestUrl ?? '/tamu';
   const guestTarget = externalGuestUrl ? undefined : '_blank';
+  const privacyHref = externalGuestUrl ? new URL('/privasi', externalGuestUrl).href : '/privasi';
+  const logoutLabel = demo ? 'Keluar dari demo' : 'Keluar akun';
   const [snapshot, setSnapshot] = useState<BoardingSnapshot | null>(null), [error, setError] = useState("");
   const [page, setPage] = useState<Page>("desk"), [dialog, setDialog] = useState<ConsoleDialog | null>(null), [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null), [query, setQuery] = useState("");
@@ -56,6 +62,19 @@ export default function GateConsole({ service, local = false, signedOut, externa
   useEffect(() => { if (dialog || fastBusy) return; const timer = setInterval(() => { if (document.visibilityState === "visible") void refresh(); }, 15000); return () => clearInterval(timer); }, [refresh, dialog, fastBusy]);
   useEffect(() => { const read = () => { const p = window.location.hash.slice(1); if (allNav.some((x) => x.id === p)) setPage(p as Page); }; read(); window.addEventListener("hashchange", read); return () => window.removeEventListener("hashchange", read); }, []);
   useEffect(() => { try { const p = JSON.parse(localStorage.getItem("gate-console-comfort-v1") ?? "{}"); setLarge(p.large === true); setContrast(p.contrast === true); } catch {} }, []);
+  // Tombol kembali Android: tutup dialog dulu, lalu mundur lewat riwayat hash antarhalaman, dan keluar hanya dari halaman pertama.
+  // Tanpa pendengar ini, Capacitor langsung mundur/keluar sehingga dialog yang terbuka (mis. isian setengah jadi) ikut hilang.
+  const dialogOpen = useRef(false); dialogOpen.current = !!dialog;
+  useEffect(() => {
+    if (Capacitor.getPlatform() !== "android") return;
+    const listener = App.addListener("backButton", ({ canGoBack }) => {
+      if (lock.current) return; // tindakan sedang dikirim; jangan membuang dialog sebelum hasilnya jelas
+      if (dialogOpen.current) setDialog(null);
+      else if (canGoBack) window.history.back();
+      else void App.exitApp();
+    });
+    return () => { void listener.then((handle) => handle.remove()).catch(() => undefined); };
+  }, []);
   const go = (p: Page) => { setPage(p); setQuery(""); setFilter("all"); setNotice(null); window.location.hash = p; window.scrollTo({ top: 0 }); };
   const open = (d: ConsoleDialog) => { setNotice(null); setDialog(d); };
   const execute = async (type: string, data: Record<string, unknown>) => {
@@ -153,16 +172,17 @@ export default function GateConsole({ service, local = false, signedOut, externa
   } else if (current === "reports") {
     content = <GateReports service={service}/>;
   } else {
-    content = <>{header("Ruang kerja Anda.", "Direktori, layanan tamu, pengaturan, dan kenyamanan tampilan.")}<div className="gc-more-grid">{nav.filter((n) => !["home", "more", "scan", "duty"].includes(n.id)).map((n) => <button key={n.id} type="button" onClick={() => go(n.id)}><Icon name={n.icon} size={26} /><strong>{n.label}</strong><span>Buka {n.label.toLowerCase()}</span></button>)}{admin && <button type="button" onClick={() => open({ type: "settings" })}><Icon name="settings" size={26} /><strong>Pengaturan Gate</strong><span>Nama lembaga dan kebijakan kunjungan</span></button>}<a href={guestHref} target={guestTarget} rel="noopener noreferrer" className="gc-button"><Icon name="people" /><strong>Halaman pendaftaran tamu</strong></a></div><section className="gc-section" style={{ marginTop: 22 }}><div className="gc-section-head"><h2>Kenyamanan tampilan</h2></div><div className="gc-section-body"><Check label="Gunakan ukuran huruf lebih besar" checked={large} onChange={(v) => { setLarge(v); try { localStorage.setItem("gate-console-comfort-v1", JSON.stringify({ large: v, contrast })); } catch {} }} /><Check label="Kontras lebih tinggi" checked={contrast} onChange={(v) => { setContrast(v); try { localStorage.setItem("gate-console-comfort-v1", JSON.stringify({ large, contrast: v })); } catch {} }} /><div className="gc-line" /><div className="gc-flex gc-spread"><div><strong>{s.actor.name}</strong><p className="gc-muted">{roleLabel}</p></div><button type="button" onClick={logout}><Icon name="logout" size={18} />Keluar akun</button></div></div></section></>;
+    content = <>{header("Ruang kerja Anda.", "Direktori, layanan tamu, pengaturan, dan kenyamanan tampilan.")}<div className="gc-more-grid">{nav.filter((n) => !["home", "more", "scan", "duty"].includes(n.id)).map((n) => <button key={n.id} type="button" onClick={() => go(n.id)}><Icon name={n.icon} size={26} /><strong>{n.label}</strong><span>Buka {n.label.toLowerCase()}</span></button>)}{admin && <button type="button" onClick={() => open({ type: "settings" })}><Icon name="settings" size={26} /><strong>Pengaturan Gate</strong><span>Nama lembaga dan kebijakan kunjungan</span></button>}{!demo && <a href={guestHref} target={guestTarget} rel="noopener noreferrer" className="gc-button"><Icon name="people" /><strong>Halaman pendaftaran tamu</strong></a>}<a href={privacyHref} target="_blank" rel="noopener noreferrer" className="gc-button"><Icon name="shield" /><strong>Kebijakan privasi</strong></a></div><section className="gc-section" style={{ marginTop: 22 }}><div className="gc-section-head"><h2>Kenyamanan tampilan</h2></div><div className="gc-section-body"><Check label="Gunakan ukuran huruf lebih besar" checked={large} onChange={(v) => { setLarge(v); try { localStorage.setItem("gate-console-comfort-v1", JSON.stringify({ large: v, contrast })); } catch {} }} /><Check label="Kontras lebih tinggi" checked={contrast} onChange={(v) => { setContrast(v); try { localStorage.setItem("gate-console-comfort-v1", JSON.stringify({ large, contrast: v })); } catch {} }} /><div className="gc-line" /><div className="gc-flex gc-spread"><div><strong>{s.actor.name}</strong><p className="gc-muted">{roleLabel}</p></div><button type="button" onClick={logout}><Icon name="logout" size={18} />{logoutLabel}</button></div></div></section></>;
   }
   return <div className={`gc ${large ? "gc-large" : ""} ${contrast ? "gc-highcontrast" : ""}`}>
+    {demo && <div className="gc-testbar" role="status">Mode demo · semua nama adalah data contoh dan tidak tersimpan. Muat ulang atau keluar untuk mengulang.</div>}
     {local && <div className="gc-testbar">Lingkungan uji lokal · seluruh identitas adalah data contoh<a href="/tamu" target="_blank" rel="noopener noreferrer">Buka formulir tamu ↗</a></div>}
-    <aside className="gc-sidebar"><div className="gc-brand"><span className="gc-brandmark"><Icon name="shield" size={25} /></span><div><strong>Gate</strong><small>AKSES & KEAMANAN</small></div></div><p className="gc-school">{s.settings.siteName}</p><nav aria-label="Navigasi utama">{nav.map((n) => <button type="button" key={n.id} aria-current={current === n.id ? "page" : undefined} onClick={() => go(n.id)}><Icon name={n.icon} size={19} />{n.label}{count(n.id) > 0 && <span className="gc-nav-count">{count(n.id)}</span>}</button>)}</nav><div className="gc-sidebar-foot"><div className="gc-account"><span className="gc-avatar">{initials(s.actor.name)}</span><div><strong>{s.actor.name}</strong><small>{roleLabel}</small></div></div><button type="button" onClick={logout}><Icon name="logout" size={17} />Keluar akun</button></div></aside>
+    <aside className="gc-sidebar"><div className="gc-brand"><span className="gc-brandmark"><Icon name="shield" size={25} /></span><div><strong>Gate</strong><small>AKSES & KEAMANAN</small></div></div><p className="gc-school">{s.settings.siteName}</p><nav aria-label="Navigasi utama">{nav.map((n) => <button type="button" key={n.id} aria-current={current === n.id ? "page" : undefined} onClick={() => go(n.id)}><Icon name={n.icon} size={19} />{n.label}{count(n.id) > 0 && <span className="gc-nav-count">{count(n.id)}</span>}</button>)}</nav><div className="gc-sidebar-foot"><div className="gc-account"><span className="gc-avatar">{initials(s.actor.name)}</span><div><strong>{s.actor.name}</strong><small>{roleLabel}</small></div></div><button type="button" onClick={logout}><Icon name="logout" size={17} />{logoutLabel}</button></div></aside>
     <header className="gc-mobile-head"><div className="gc-brand"><span className="gc-brandmark"><Icon name="shield" size={21} /></span><div><strong>Gate</strong><small>AKSES & KEAMANAN</small></div></div><div className="gc-mobile-account"><div>{s.actor.name}<br /><span className={`gc-connection ${error ? "gc-offline" : ""}`}>{error ? "Belum diperbarui" : `Diperbarui ${timeWib(s.serverAt)}`}</span></div><button type="button" aria-label="Muat ulang data" onClick={() => void refresh()}><Icon name="refresh" size={18} /></button></div></header>
     <main className="gc-main" id="gate-main"><div className="gc-topline"><span className="gc-breadcrumb">Gate<Icon name="chevron" size={13} />{nav.find((n) => n.id === current)?.label}</span><div className="gc-flex"><span className={`gc-connection ${error ? "gc-offline" : ""}`}>{error ? "Koneksi belum pulih" : `Diperbarui ${timeWib(s.serverAt)} WIB`}</span><button type="button" className="gc-icon-button" aria-label="Muat ulang data" onClick={() => void refresh()}><Icon name="refresh" size={17} /></button></div></div>
       {error && <div className="gc-callout gc-error" role="alert" style={{ marginBottom: 18 }}><Icon name="info" /><p>{error} Data terakhir tidak membuktikan izin masih berlaku. Periksa ulang dengan pengasuh sebelum pencatatan.</p></div>}
       {notice && !dialog && <div role={notice.error ? "alert" : "status"} className={`gc-notice ${notice.error ? "gc-notice-error" : ""}`}><span>{notice.text}</span><button type="button" onClick={() => setNotice(null)} aria-label="Tutup pemberitahuan"><Icon name="close" size={16} /></button></div>}
-      {guard && !['desk','handover'].includes(current) && s.handovers.some(h=>h.toId===s.actor.id&&!h.receivedAt) && <div className="gc-callout gw-space"><Icon name="shield"/><p>Serah terima menunggu Anda.</p><button type="button" onClick={()=>go('handover')}>Tinjau kiriman jaga</button></div>}{content}<footer className="gc-footer"><span>Irsyads Gate · {local ? "Data contoh tersimpan di server lokal" : "Layanan gerbang"}</span><span>Asia/Jakarta · WIB</span></footer>
+      {guard && !['desk','handover'].includes(current) && s.handovers.some(h=>h.toId===s.actor.id&&!h.receivedAt) && <div className="gc-callout gw-space"><Icon name="shield"/><p>Serah terima menunggu Anda.</p><button type="button" onClick={()=>go('handover')}>Tinjau kiriman jaga</button></div>}{content}<footer className="gc-footer"><span>Irsyads Gate · {local ? "Data contoh tersimpan di server lokal" : demo ? "Mode demo" : "Layanan gerbang"}</span><span>Asia/Jakarta · WIB</span></footer>
     </main>
     <nav className="gc-bottomnav" style={{ gridTemplateColumns: `repeat(${mobileIds.length},minmax(0,1fr))` }} aria-label="Navigasi HP">{mobileIds.map((id) => { const n = allNav.find((n) => n.id === id)!; return <button key={id} type="button" aria-current={current === id || id === "more" && !mobileIds.includes(current) ? "page" : undefined} onClick={() => go(id)}><Icon name={n.icon} size={21} /><span>{mobileLabel[id]}</span>{count(id) > 0 && <span className="gc-nav-count">{count(id)}</span>}</button>; })}</nav>
     {dialog && <ConsoleDialogs key={`${dialog.type}:${dialog.id ?? "new"}`} dialog={dialog} snapshot={s} execute={execute} busy={busy} error={notice?.error ? notice.text : ""} printCards={ids=>{setDialog(null);setPrintIds(ids);go("cards");}} close={() => setDialog(null)} />}

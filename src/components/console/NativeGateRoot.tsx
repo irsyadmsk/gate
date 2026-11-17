@@ -12,7 +12,7 @@ async function signIn(email: string, password: string, captchaToken: string) {
 }
 
 /** Web: sesi memakai cookie *.irsyads.com yang sama dengan id.irsyads.com, jadi masuk di sini berlaku juga di sana dan sebaliknya. */
-export default function NativeGateRoot() {
+export default function NativeGateRoot({ onDemo }: { onDemo?: (actorId: string) => void }) {
   const [sessionId, setSessionId] = useState<string | null | undefined>(undefined);
   useEffect(() => {
     let live = true, revision = 0;
@@ -23,5 +23,5 @@ export default function NativeGateRoot() {
   }, []);
   if (sessionId) return <GateConsole key={sessionId} service={nativeBoardingService} signedOut={() => setSessionId(null)} />;
   return <LoginScreen checking={sessionId === undefined} signIn={signIn} idLoginUrl={urlMasukId(window.location.href, 'id')}
-    recoveryUrl={lupaSandiUrl(window.location.origin + '/', import.meta.env.DEV)} guestHref="/tamu" />;
+    recoveryUrl={lupaSandiUrl(window.location.origin + '/', import.meta.env.DEV)} guestHref="/tamu" onDemo={onDemo} privacyHref="/privasi" />;
 }

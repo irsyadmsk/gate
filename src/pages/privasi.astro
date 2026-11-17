@@ -1,0 +1,82 @@
+---
+import Dasar from "@/layouts/Dasar.astro";
+
+// Alamat surel pengembang diisi saat build (PUBLIC_GATE_CONTACT_EMAIL), bukan ditulis di repo terbuka.
+const raw = String(import.meta.env.PUBLIC_GATE_CONTACT_EMAIL ?? "").trim();
+const kontak = /^[^\s@<>"'`]+@[^\s@<>"'`]+\.[A-Za-z]{2,}$/.test(raw) ? raw : "";
+if (!kontak && import.meta.env.PROD) console.warn("PERINGATAN: PUBLIC_GATE_CONTACT_EMAIL belum diisi; /privasi dibangun tanpa alamat surel pengembang.");
+const diperbarui = "17 November 2026";
+---
+<Dasar title="Kebijakan privasi — Irsyads Gate" description="Data yang diproses Irsyads Gate, tujuannya, lama penyimpanan, dan cara meminta data Anda.">
+  <a class="skip" href="#isi">Lewati ke isi</a>
+  <main class="privasi" id="isi">
+    <p class="privasi-kicker">IRSYADS GATE</p>
+    <h1>Kebijakan privasi</h1>
+    <p class="privasi-meta">Diperbarui {diperbarui}. Berlaku untuk aplikasi Android Irsyads Gate dan situs gate.irsyads.com.</p>
+
+    <h2 id="peran">1. Siapa yang mengelola data</h2>
+    <p>Irsyads Gate adalah aplikasi pos gerbang untuk sekolah berasrama: mencatat akses GTK, memeriksa izin keluar murid, mengelola kunjungan tamu, dan serah terima jaga. <strong>Lembaga yang memakai Gate</strong> (misalnya sekolah Anda) menentukan data apa yang dimasukkan dan untuk apa, serta siapa yang diberi akun. Irsyads Gate menyediakan aplikasi dan infrastruktur untuk menyimpannya.</p>
+
+    <h2 id="data">2. Data yang diproses</h2>
+    <ul>
+      <li><strong>Akun:</strong> email, peran, dan penanda sesi (token) dari Irsyads ID. Kata sandi dikirim ke Irsyads ID saat masuk dan <em>tidak disimpan</em> oleh Gate.</li>
+      <li><strong>Identitas murid dan GTK:</strong> nama, nomor induk atau nomor internal, kelas atau unit, asrama, status tempat tinggal (GTK), dan kode kartu QR.</li>
+      <li><strong>Izin dan pergerakan:</strong> alasan dan tujuan izin, jadwal, nama dan hubungan penjemput, waktu keluar dan masuk, petugas yang mencatat, serta gerbang.</li>
+      <li><strong>Tamu:</strong> nama, kategori, asal lembaga, nomor telepon (boleh kosong), penerima, keperluan, jadwal, kendaraan, jumlah rombongan, catatan, kode kunjungan, serta waktu masuk dan keluar.</li>
+      <li><strong>Buku jaga:</strong> jadwal jaga, catatan kejadian, patroli, paket dan aset, serah terima antarpetugas, dan foto kejadian bila lembaga mengaktifkan penyimpanan foto.</li>
+      <li><strong>Jejak audit:</strong> tindakan petugas dan admin (siapa, apa, kapan).</li>
+      <li><strong>Di perangkat Android:</strong> sesi masuk yang dienkripsi dengan Android Keystore, serta berkas ekspor atau cetak sementara di cache aplikasi yang dihapus saat keluar akun.</li>
+    </ul>
+    <p><strong>Tidak dikumpulkan:</strong> lokasi, kontak, mikrofon, ID iklan, dan data analitik atau pelacak pihak ketiga. Gate tidak menampilkan iklan.</p>
+
+    <h2 id="kamera">3. Kamera</h2>
+    <p>Kamera hanya dibuka setelah petugas menekan tombol buka kamera, untuk membaca kartu QR. Gambar dari pemindai tidak disimpan dan tidak dikirim. Foto kejadian bersifat opsional: foto diperkecil, metadata EXIF dibuang, lalu disimpan di penyimpanan privat (bukan tautan publik) dan hanya dapat dibaca akun Gate yang berwenang.</p>
+
+    <h2 id="tujuan">4. Tujuan penggunaan</h2>
+    <p>Data dipakai untuk mencatat akses gerbang, memeriksa izin yang sudah disetujui, mengatur kunjungan, menyerahkan tanggungan antarpetugas, menyusun laporan lembaga, dan menjaga keamanan layanan. Data tidak dijual dan tidak dipakai untuk iklan atau profil pemasaran.</p>
+
+    <h2 id="berbagi">5. Dengan siapa data dibagikan</h2>
+    <ul>
+      <li>Pengguna Gate yang berwenang di lembaga yang sama, sesuai perannya (satpam, admin, pengasuh, GTK). Setiap permintaan diperiksa di server.</li>
+      <li>Penyedia infrastruktur yang memproses data atas nama Gate: <strong>Supabase</strong> (basis data, autentikasi, fungsi server), <strong>Cloudflare</strong> (hosting situs dan pemeriksaan keamanan Turnstile pada formulir masuk dan formulir tamu), dan <strong>Google Drive</strong> hanya bila foto kejadian diaktifkan.</li>
+      <li>Berkas ekspor atau cetak dibagikan petugas sendiri ke aplikasi pilihannya melalui lembar berbagi Android. Gate tidak mengirimnya ke pihak lain.</li>
+      <li>Pihak lain hanya bila diwajibkan hukum.</li>
+    </ul>
+
+    <h2 id="retensi">6. Lama penyimpanan</h2>
+    <ul>
+      <li><strong>Pendaftaran tamu yang belum diproses:</strong> dihapus otomatis paling lambat 24 jam setelah jadwal kedatangan.</li>
+      <li><strong>Kunjungan selesai:</strong> dihapus otomatis setelah masa simpan yang diatur admin lembaga (30 sampai 365 hari; bawaan 90 hari). Angka yang berlaku tampil pada formulir tamu.</li>
+      <li><strong>Catatan lain</strong> (pergerakan, izin, buku jaga, jejak audit, foto kejadian): disimpan selama lembaga membutuhkannya untuk keamanan dan pertanggungjawaban. Saat ini belum ada penghapusan otomatis; lembaga dapat meminta penghapusan atau anonimisasi kepada pengelola (bagian 8).</li>
+      <li><strong>Di perangkat:</strong> sesi dihapus saat keluar akun; berkas ekspor sementara dihapus saat keluar akun dan bila lebih dari satu jam.</li>
+    </ul>
+
+    <h2 id="keamanan">7. Keamanan</h2>
+    <p>Semua komunikasi memakai HTTPS. Hak akses diperiksa di server untuk setiap tindakan. Pada Android, sesi disimpan terenkripsi di Android Keystore dan aplikasi tidak ikut pencadangan sistem. Token tidak dimasukkan ke alamat URL. Formulir masuk dan formulir tamu dilindungi pemeriksaan keamanan Cloudflare Turnstile serta pembatasan laju. Kode sumber Gate terbuka di GitHub sehingga dapat diperiksa; data sekolah tidak ada di repositori itu.</p>
+
+    <h2 id="hak">8. Hak Anda dan permintaan data</h2>
+    <p>Untuk melihat, memperbaiki, atau meminta penghapusan data murid, GTK, atau tamu, hubungi <strong>admin atau petugas gerbang lembaga Anda</strong>; lembaga adalah pihak yang menentukan data tersebut.{" "}
+      {kontak ? <>Untuk hal yang berkaitan dengan aplikasinya sendiri, hubungi pengembang di <a href={`mailto:${kontak}`}>{kontak}</a>.</> : <>Untuk hal yang berkaitan dengan aplikasinya sendiri, hubungi pengelola Irsyads Gate melalui admin lembaga Anda.</>}</p>
+    <p><strong>Akun dan penghapusannya.</strong> Gate tidak membuka pendaftaran akun. Akun dibuat dan dinonaktifkan oleh admin lembaga melalui Irsyads ID. Permintaan menghapus akun disampaikan kepada admin lembaga atau melalui Irsyads ID; data catatan yang terkait mengikuti bagian 6.</p>
+
+    <h2 id="anak">9. Anak-anak</h2>
+    <p>Gate dipakai oleh petugas dan pengelola sekolah dewasa, bukan oleh anak-anak. Data murid dimasukkan oleh lembaga. Orang tua atau wali yang ingin mengetahui atau mengoreksi data anaknya menghubungi lembaga.</p>
+
+    <h2 id="perubahan">10. Perubahan kebijakan</h2>
+    <p>Perubahan akan dipublikasikan di halaman ini dengan tanggal pembaruan baru. Perubahan yang mempengaruhi jenis data yang diproses dicantumkan di catatan rilis aplikasi.</p>
+
+    <h2 id="english">English summary</h2>
+    <p>Irsyads Gate is a school gatehouse tool. The school that uses it decides which records are entered and why; Gate provides the app and infrastructure. Gate processes account email and session tokens (passwords go to Irsyads ID and are not stored by Gate), student and staff identities, permit and movement records, visitor registrations, duty logs, an audit trail and, if enabled, private incident photos. It does not collect location, contacts, microphone data or advertising IDs, shows no ads, and uses no third-party analytics. The camera is used only to scan QR cards after a guard opens it. Data is shared only with authorised users of the same school and with infrastructure providers (Supabase, Cloudflare Turnstile and hosting, and Google Drive when photos are enabled). Unprocessed guest registrations are deleted within 24 hours after the planned arrival; finished visits after the school-defined period (30–365 days, default 90); other records are kept while the school needs them and can be deleted on request. Gate has no in-app account sign-up; accounts are created and removed by the school administrator through Irsyads ID. Requests about school data go to the school; requests about the app go to the developer contact above.</p>
+  </main>
+</Dasar>
+
+<style>
+  .privasi { max-width: 46rem; margin: 0 auto; padding: 32px 20px 64px; }
+  .privasi-kicker { margin: 0 0 6px; font-size: .72rem; font-weight: 800; letter-spacing: .14em; color: var(--accent); }
+  .privasi h1 { font-size: 2rem; line-height: 1.15; }
+  .privasi h2 { font-size: 1.2rem; margin: 30px 0 8px; }
+  .privasi-meta { color: var(--muted); margin: 8px 0 0; }
+  .privasi p, .privasi li { line-height: 1.6; }
+  .privasi ul { padding-left: 1.2rem; }
+  .privasi a { color: var(--accent); }
+</style>

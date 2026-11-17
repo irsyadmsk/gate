@@ -6,3 +6,4 @@ export * from "./boarding";
 export * from "./boarding-reports";
 export * from "./gtk-accounts";
 export * from "./people-import";
+export * from "./demo";

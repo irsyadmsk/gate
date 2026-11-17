@@ -11,6 +11,7 @@
     "build": "astro build && node scripts/write-csp.mjs",
     "android:sync": "npm run build && cap sync android",
     "android:bundle:release": "node scripts/android-release.mjs",
+    "android:verify:release": "node scripts/android-verify-release.mjs",
     "preview": "astro preview --host 127.0.0.1 --port 4342",
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "check:public": "node scripts/check-public-repo.mjs",

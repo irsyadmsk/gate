@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { DEMO_ROLES } from '@irsyads/gate-core';
 import { Check, Field, Icon } from './ui';
 import { loginBackoffSeconds, validateLogin, type LoginFailure } from '../../lib/login-form';
 import '../../styles/console.css';
@@ -14,10 +15,24 @@ export interface LoginScreenProps {
   guestHref: string;
   /** Pesan dari induk, mis. sesi berakhir. */
   notice?: string;
+  /** Buka mode demo (data contoh di memori) sebagai peran yang dipilih. Tanpa akun dan tanpa jaringan. */
+  onDemo?: (actorId: string) => void;
+  /** Alamat kebijakan privasi (wajib tersedia dari layar masuk untuk Google Play). */
+  privacyHref?: string;
+}
+
+/** Pilihan peran untuk mode demo, dipakai reviewer Google Play dan calon pengguna. */
+function DemoPicker({ onPick }: { onPick: (actorId: string) => void }) {
+  const [open, setOpen] = useState(false);
+  if (!open) return <p><button type="button" className="gc-button gc-full" onClick={() => setOpen(true)}>Coba mode demo</button></p>;
+  return <section className="gc-demo" aria-label="Mode demo">
+    <p><strong>Mode demo.</strong> Pilih peran. Memakai data contoh di perangkat ini: tanpa akun, tanpa jaringan, dan tidak ada yang tersimpan.</p>
+    {DEMO_ROLES.map((role) => <button type="button" className="gc-button gc-full" key={role.actorId} onClick={() => onPick(role.actorId)}><strong>{role.label}</strong><small>{role.about}</small></button>)}
+  </section>;
 }
 
 /** Layar masuk Gate: email + sandi + Turnstile. Pendaftaran dan pemulihan sandi tetap di Irsyads ID. */
-export default function LoginScreen({ signIn, checking = false, idLoginUrl, recoveryUrl, guestHref, notice }: LoginScreenProps) {
+export default function LoginScreen({ signIn, checking = false, idLoginUrl, recoveryUrl, guestHref, notice, onDemo, privacyHref }: LoginScreenProps) {
   const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [show, setShow] = useState(false);
   const [error, setError] = useState(''), [busy, setBusy] = useState(false), [failures, setFailures] = useState(0), [wait, setWait] = useState(0);
   const [captcha, setCaptcha] = useState<string | null>(null);
@@ -84,5 +99,7 @@ export default function LoginScreen({ signIn, checking = false, idLoginUrl, reco
       <p className="gc-muted"><a href={recoveryUrl} rel="noopener noreferrer">Lupa kata sandi?</a> Akun Gate diberikan oleh admin sekolah. Pemulihan sandi ada di Irsyads ID.</p>
     </>}
     <p><a className="gc-button gc-full" href={guestHref}>Saya datang sebagai tamu</a></p>
+    {onDemo && !checking && <DemoPicker onPick={onDemo} />}
+    {privacyHref && <p className="gc-muted"><a href={privacyHref} target="_blank" rel="noopener noreferrer">Kebijakan privasi</a></p>}
   </main></div>;
 }
