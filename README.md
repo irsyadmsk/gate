@@ -46,7 +46,7 @@ supabase/functions/{gate-console,gate-public,gate-tamu} dan migrasi Gate disalin
 
 `npm run build:engine` membentuk ulang engine fungsi dari inti aturan. Perubahan engine memerlukan tes ulang dan pemeriksaan kompatibilitas Studio. Penerapan backend, migrasi, dan deploy Cloudflare dilakukan secara sengaja dengan persetujuan pemilik. Tidak ada workflow Actions/deploy otomatis. Konfigurasi Worker gate berada di wrangler.jsonc.
 
-Pendaftaran tamu mandiri (`gate-public`) memverifikasi token Cloudflare Turnstile di server dan membutuhkan secret `TURNSTILE_SECRET_KEY` di Edge Functions; tanpa secret pendaftaran ditolak. Pengembangan lokal formulir tamu memakai `http://localhost:4341` (bukan 127.0.0.1) karena widget hanya mengizinkan hostname `*.irsyads.com` dan `localhost`.
+Pendaftaran tamu mandiri (`gate-public`) memverifikasi token Cloudflare Turnstile di server dan membutuhkan secret `TURNSTILE_SECRET_KEY` di Edge Functions; tanpa secret pendaftaran ditolak. Pengembangan lokal formulir tamu memakai `http://localhost:4341` (bukan 127.0.0.1) karena widget hanya mengizinkan hostname `*.irsyads.com` dan `localhost`. Urutan rilis, uji asap, dan rollback web dan backend ada di [docs/RILIS_WEB_BACKEND.md](docs/RILIS_WEB_BACKEND.md).
 
 Kode dipublikasikan tanpa penambahan lisensi distribusi baru pada saat pemisahan.
 
