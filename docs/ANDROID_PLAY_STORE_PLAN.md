@@ -2,9 +2,9 @@
 
 Status: usulan per 6 November 2026. Hasil akhir yang dituju adalah Android App Bundle (`.aab`) bertanda tangan, sudah dipasang melalui Google Play pada perangkat uji, dan dilengkapi materi serta akses yang diperlukan untuk pengajuan review.
 
-[Materi pengajuan](ANDROID_PLAY_SUBMISSION.md) memuat draf listing, aset grafis, instruksi reviewer, dan inventaris data untuk persiapan Play Console.
+[Materi pengajuan](ANDROID_PLAY_SUBMISSION.md) memuat isian Play Console, teks listing, tangkapan layar, instruksi reviewer, jawaban Data safety, dan langkah membangun AAB. [Matriks uji perangkat](ANDROID_DEVICE_TEST.md) mencatat apa yang sudah dan belum diuji.
 
-APK fixture dan klien Android OAuth/PKCE sudah dibangun lokal. Klien memakai transport HTTP Android untuk `gate-console` dengan verifikasi sesi dan peran yang sudah ada. Pengujian Irsyads ID dan App Link pada staging, serta uji HP pos, masih diperlukan. [Panduan build dan konfigurasi Android](ANDROID_DEVELOPMENT.md)
+**Pembaruan 17 November 2026.** Versi pertama memakai formulir login di aplikasi (bukan OAuth/App Link, yang menjadi fase 2). Build rilis, pemeriksa AAB, halaman `/privasi`, mode demo untuk reviewer, dan uji emulator sudah ada. Yang tersisa sebelum unggah ke Internal testing adalah uji di HP fisik dengan jaringan nyata (Turnstile di WebView, login, Keystore), keputusan pemilik (K6, K9, K10), dan unggahan Play Console oleh pemilik. Bagian "Kontrak login dan backend" dan tabel tahap di bawah masih mencatat rencana awal berbasis OAuth. [Panduan build dan konfigurasi Android](ANDROID_DEVELOPMENT.md)
 
 ## Dasar dan cakupan versi 1
 

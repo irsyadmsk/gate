@@ -38,7 +38,7 @@ Server fixture hanya mendengarkan loopback di http://127.0.0.1:4571, tidak menga
 
 ## Android
 
-Proyek Capacitor ada di `android/`. [Panduan Android](docs/ANDROID_DEVELOPMENT.md) menjelaskan build APK uji dan cara menghubungkan HP ke fixture melalui USB. [Rencana Play Store](docs/ANDROID_PLAY_STORE_PLAN.md) memuat cakupan dan syarat rilis.
+Proyek Capacitor ada di `android/`. [Panduan Android](docs/ANDROID_DEVELOPMENT.md) menjelaskan build APK uji dan cara menghubungkan HP ke fixture melalui USB. [Rencana Play Store](docs/ANDROID_PLAY_STORE_PLAN.md) memuat cakupan dan syarat rilis, [materi pengajuan](docs/ANDROID_PLAY_SUBMISSION.md) memuat isian Play Console dan langkah membangun AAB, dan [matriks uji perangkat](docs/ANDROID_DEVICE_TEST.md) mencatat hasil uji. Layar masuk punya tombol "Coba mode demo" (data rekaan di memori, tanpa jaringan) untuk reviewer dan calon pengguna; kebijakan privasi ada di `/privasi`.
 
 ## Backend dan publikasi
 

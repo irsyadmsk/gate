@@ -125,6 +125,14 @@ Urutan kerja: **A → (B dan C) → D**. B dan C boleh paralel di Folder UJI yan
 
 **Lulus bila:** AAB bertanda tangan terpasang dari Internal testing, login formulir, scan, dan ekspor berhasil dari instalasi Play pada HP pos, dan formulir Play Console cocok dengan build.
 
+**Status 17 Nov 2026:** D1–D4 selesai di kode dan dokumen, D5 dan D6 tertulis dan sebagian diuji di emulator. Semua di `main` lokal; belum di-push, belum dideploy, belum ada unggahan Play Console. `npm test` 177/177 di PowerShell dan Git Bash, `tsc` bersih, `check:public` hijau.
+- **D1.** `versionCode` dari `GATE_ANDROID_VERSION_CODE` (wajib pada rilis, 1..2.100.000.000), `versionName` dari `package.json` (kini `0.0.1`; naikkan sebelum rilis publik). `scripts/android-release-config.mjs` menolak konfigurasi tak lengkap dan keystore di dalam folder repo; `scripts/android-verify-release.mjs` memeriksa tanda tangan AAB, `bundletool validate`, dan manifest gabungan (izin hanya `INTERNET` dan `CAMERA`, tanpa App Link, tidak debuggable, `allowBackup=false`, `minSdk` 24, `targetSdk` 36). Satu galat di skrip rilis diperbaiki: `gradlew.bat` tidak ditemukan saat dijalankan dari Git Bash. AAB rilis (3,1 MB, tanpa pustaka native) dibangun dengan kunci sementara dan lolos semua pemeriksaan.
+- **D2.** `/privasi` (halaman statis, retensi sama dengan engine, ringkasan bahasa Inggris), tertaut dari layar masuk dan menu Lainnya. Surel pengembang diisi lewat `PUBLIC_GATE_CONTACT_EMAIL` saat build web dan tidak ada di repo (K9). Gate tidak membuka pendaftaran akun; halaman pemulihan sandi di ID tidak menawarkan pendaftaran (diperiksa), tetapi "Kembali masuk" di sana membuka halaman masuk ID di peramban luar.
+- **D3.** Mode demo (K4 opsi a): tombol "Coba mode demo" memilih peran Satpam, Admin, Pengasuh, atau GTK dengan data rekaan di memori (`packages/gate/src/demo.ts`, `src/lib/boarding-demo.ts`), memakai engine yang sama dengan server, tanpa jaringan, tanpa sesi. Spanduk "Mode demo" selalu tampil, tautan pendaftaran tamu nyata disembunyikan, foto dinonaktifkan, dan keluar dari demo membuang berkas ekspor sementara.
+- **D4.** Enam tangkapan layar 1080 × 1920 (24-bit PNG) dari build rilis di emulator, jawaban rating konten, target audiens, Data safety, dan teks listing ada di `docs/ANDROID_PLAY_SUBMISSION.md`.
+- **D5, D6.** Langkah jalur rilis di `docs/ANDROID_PLAY_SUBMISSION.md`; matriks dan hasil uji di `docs/ANDROID_DEVICE_TEST.md`. Lulus di emulator Android 16: pasang, edge-to-edge, empat peran demo, tombol kembali (dialog lebih dulu), kamera ditolak dan diizinkan, ekspor CSV/Excel/Word ke lembar berbagi, cetak, tautan privasi, dan keluar membersihkan cache. Dua perbaikan dari uji itu: tombol kembali kini menutup dialog sebelum meninggalkan halaman, dan kotak centang tidak lagi tinggi 52 px sehingga labelnya sejajar.
+- **Belum (butuh HP fisik atau jaringan):** widget Turnstile di WebView `https://localhost`, login nyata, Keystore dan refresh token, akun tanpa peran dan sesi dicabut, keyboard dan pengelola sandi, QR cahaya rendah, dua petugas satu kartu, jaringan putus saat transaksi, dan Pre-launch report Play. Emulator yang dipakai tidak mendapat DNS dari host, jadi semua uji yang butuh internet tertunda.
+
 ## 5. Gerbang rilis
 
 Tiap baris butuh konfirmasi pemilik sebelum dilakukan.
@@ -132,7 +140,7 @@ Tiap baris butuh konfirmasi pemilik sebelum dilakukan.
 - [ ] **Repo:** A1–A6 selesai dan di `main`; `check:public` hijau; secret scanning aktif.
 - [ ] **Backend:** tidak ada migrasi baru (perintah baru hidup di dokumen state). Urutan: set secret `TURNSTILE_SECRET_KEY` di Edge Functions → deploy `gate-console` dan `gate-public` (engine baru, CAPTCHA wajib) → deploy frontend Worker `gate`. `gate-public` tanpa secret menolak pendaftaran tamu (gagal tertutup), dan frontend lama tanpa token Turnstile ditolak `gate-public` baru, jadi `gate-public` dan frontend dideploy berdekatan. Rollback frontend aman; jangan mengembalikan engine lama setelah `guardAccess` dipakai.
 - [ ] **Login:** hostname widget Turnstile diverifikasi di Cloudflare untuk `gate.irsyads.com` dan `localhost`; formulir login lulus uji web dan perangkat; CSP mengizinkan Turnstile. Fase 2 (OAuth server) tidak termasuk rilis pertama.
-- [ ] **Play:** D1–D6, lalu unggah ke Internal testing.
+- [ ] **Play:** D1–D6, lalu unggah ke Internal testing. Sebelum Play Console meninjau: deploy web dengan `PUBLIC_GATE_CONTACT_EMAIL` terisi supaya `https://gate.irsyads.com/privasi` hidup dan memuat alamat kontak; uji HP fisik untuk baris "wajib" di `docs/ANDROID_DEVICE_TEST.md` (Turnstile di WebView, login, Keystore); naikkan `version` di `package.json`; buat upload key milik pemilik di luar repo.
 
 ## 6. Keputusan pemilik
 
@@ -141,11 +149,13 @@ Tiap baris butuh konfirmasi pemilik sebelum dilakukan.
 | K1 | Arti "login via Gate". | **Diputuskan 16 Nov 2026: formulir di Gate, ditambah tombol SSO Irsyads ID.** Risiko yang diterima: login kedua di repo terbuka. Dikendalikan lewat S12–S14 dan CAPTCHA wajib. |
 | K2 | Peran dasar `admin`/`staff`: tetap di Irsyads ID, atau kelola dari Gate? | Tetap di Irsyads ID. Gate hanya mengelola hak Gate. |
 | K3 | Lingkungan uji OAuth (hanya untuk fase 2): proyek Supabase uji sementara, klien uji di proyek produksi, atau stack lokal. | Stack lokal sampai fase 2 dimulai. Hindari proyek produksi sebelum audit C3. |
-| K4 | Akses reviewer Play: (a) mode demo di aplikasi dengan data sintetis lokal, (b) proyek uji terpisah, (c) tenant demo di produksi. | (a), berupa tombol "Coba mode demo" di layar masuk. Data Gate satu-tenant, jadi (c) berisiko. |
+| K4 | Akses reviewer Play: (a) mode demo di aplikasi dengan data sintetis lokal, (b) proyek uji terpisah, (c) tenant demo di produksi. | (a), berupa tombol "Coba mode demo" di layar masuk. Data Gate satu-tenant, jadi (c) berisiko. **Dilaksanakan 17 Nov 2026** (tombol ada di web dan Android; mudah disembunyikan di web bila tidak diinginkan). Risiko: reviewer Google bisa meminta kredensial nyata; jalur cadangannya (b). |
 | K5 | Lisensi repo: MIT, Apache-2.0, AGPL-3.0, atau tanpa lisensi. | Putuskan sebelum repo diumumkan. |
 | K6 | Konfirmasi paket `com.irsyads.gate`, pemilik akun Play, dan pemegang upload key. | — |
 | K7 | Nasib kode OAuth Android (`android-oauth.ts` dan tesnya) selama fase 2 belum dimulai. | Dilaksanakan 16 Nov 2026: disimpan tanpa terhubung ke UI; halaman persetujuan dan callback dihapus. Hapus juga bila fase 2 tidak dimulai dalam satu siklus rilis. |
 | K8 | Google di formulir Gate: tombol memakai redirect ke ID (Google "langsung" hanya terdaftar untuk `id.irsyads.com`), atau `signInWithOAuth` dari Gate (butuh redirect URL Gate di Supabase dan Google). | Lewat ID. Tidak ada perubahan konfigurasi Google atau Supabase. |
+| K9 | Surel pengembang untuk `/privasi` dan listing Play Console. | Pemilik menentukan alamatnya. Isi `PUBLIC_GATE_CONTACT_EMAIL` saat membangun web (tidak ditulis di repo terbuka) dan pakai alamat yang sama di Play Console. Tanpa nilai, `/privasi` hanya menyebut admin lembaga dan build memberi peringatan. |
+| K10 | Retensi catatan selain tamu (pergerakan, izin, buku jaga, jejak audit, foto kejadian). | Saat ini tidak ada penghapusan otomatis; `/privasi` menyatakannya terus terang. Putuskan masa simpan dan apakah engine perlu purge (perubahan engine/backend, butuh koordinasi dan konfirmasi). Ubah teks di `/privasi` dan Data safety bila diputuskan. |
 
 ## 7. Yang tidak dilakukan tanpa konfirmasi
 
